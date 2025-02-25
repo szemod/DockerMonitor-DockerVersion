@@ -70,12 +70,14 @@ Use the SSH credentials you provide during setup to log in, which should match t
 Docker Monitor is available on Docker Hub. Follow these steps to install and run it:
 
 1. **Pull the Docker Image:**
-   Open a terminal and run:
-   
+ 
+Open a terminal and run:
+
     $ docker pull szemod/dockermonitor
 
 2. **Run the Docker Container:**
-   Launch the container with:
+
+Launch the container with:
 
     $ docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
    
@@ -87,10 +89,10 @@ Docker Monitor is available on Docker Hub. Follow these steps to install and run
    - Save the settings to configure the connection to your Docker host.
    - After a successful setup, you will be redirected to the login page.
 
-## Login to the Dashboard
-
-Use the SSH Username and SSH Password provided during setup to log in.  
-Once authenticated, you can access real-time Docker container statistics via the web dashboard.
+5. **Login to the Dashboard:**
+   - Use the SSH Username and SSH Password provided during setup to log in. 
+   - Once authenticated, you can access real-time Docker container statistics via the web dashboard.
+   - On the Login page, you can change the SSH Host, SSH Username, and SSH Password at any time, and you can connect to any HOST of your choice.
 
 ## Repository Structure
 
