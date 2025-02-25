@@ -77,10 +77,19 @@ Open a terminal and run:
 
 2. **Run the Docker Container:**
 
-Launch the container with:
+Launch the container within terminal with the following command:
 
     $ docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
-   
+
+Here is the Docker Compose file (what you can also use within Portainer stack):
+
+    services:
+      dockermonitor:
+        container_name: dockermonitor
+        image: szemod/dockermonitor
+        ports:
+          - 5434:5434
+
 3. **SSH Setup:**
    - DockerMonitor will be available at [http://localhost:5434/](http://localhost:5434/).
    - On the first launch, you will be directed to the SSH setup page.
