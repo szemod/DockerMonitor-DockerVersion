@@ -19,7 +19,7 @@ app.secret_key = 'supersecretkey'
 
 def is_configured():
     """
-    Ellenőrzi, hogy a config.py-ban megadták-e az SSH adatok valamelyikét.
+    It checks whether any of the SSH credentials are provided in the config.py.
     """
     try:
         with open('config.py', 'r') as f:
@@ -35,7 +35,7 @@ def is_configured():
 
 def get_ssh_credentials():
     """
-    A config.py fájl tartalmát olvassa be, és visszaadja az SSH beállításokat.
+    It reads the contents of the config.py file and returns the SSH settings.
     """
     try:
         with open('config.py', 'r') as f:
@@ -177,14 +177,14 @@ def fetch_docker_data():
 
 @app.before_request
 def require_login():
-    # Ha a konfiguráció nincs beállítva, a setup oldalra irányítunk
+    # If the configuration isn't set up, it redirects to the setup page.
     if request.endpoint not in ['setup', 'static'] and not is_configured():
         return redirect(url_for('setup'))
     if request.endpoint not in ['login', 'setup', 'static']:
         if not session.get('logged_in'):
             return redirect(url_for('login'))
 
-# --- Setup oldal ---
+# --- Setup page ---
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     message = None
@@ -194,7 +194,7 @@ def setup():
         ssh_user = request.form.get('ssh_user')
         ssh_password = request.form.get('ssh_password')
         if not ssh_host or not ssh_user or not ssh_password:
-            error = "Minden mezőt ki kell tölteni!"
+            error = "All fields must be filled out!"
         else:
             try:
                 with open('config.py', 'w') as f:
@@ -202,13 +202,13 @@ def setup():
                     f.write(f"SSH_USER = '{ssh_user}'\n")
                     f.write(f"SSH_PASSWORD = '{ssh_password}'\n")
                     f.write("PORT = 5434\n")
-                message = "SSH beállítások mentve. Kérlek, jelentkezz be."
+                message = "SSH settings saved. Please log in."
                 return redirect(url_for('login'))
             except Exception as e:
-                error = "Hiba történt a konfiguráció mentésekor!"
+                error = "An error occurred while saving the configuration!"
     return render_template('setup.html', message=message, error=error)
 
-# --- Login oldal ---
+# --- Login page ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -225,7 +225,7 @@ def login():
             session['auto_logout'] = True if request.form.get('auto_logout') == 'on' else False
             return redirect(url_for('index'))
         else:
-            error = "Érvénytelen felhasználónév vagy jelszó!"
+            error = "Invalid username or password!"
     return render_template('login.html', error=error)
 
 @app.route('/logout')
@@ -266,7 +266,7 @@ def logs():
         return jsonify(success=False, error="No container id provided")
     try:
         ssh = get_ssh_connection()
-        # Lekérjük az összes konténer teljes ID-ját (futó és leállított)
+
         stdin, stdout, stderr = ssh.exec_command("docker ps -a -q --no-trunc")
         full_ids = stdout.read().decode().strip().splitlines()
         ssh.close()
