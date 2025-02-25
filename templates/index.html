@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <title>Docker Monitor</title>
+  <link rel="icon" href="/path/to/favicon.ico"> <!-- Add a correct path to your favicon -->
   <style>
-    /* Alap sötét stílus */
+    /* dark mode default */
     body {
       font-family: 'Courier New', monospace;
       margin: 20px;
       background: #1a1a1a;
       color: #e6f0e6;
     }
-    /* Világos mód stílus */
+    /* light mode */
     body.light-mode {
       background: #f8f9fa;
       color: #212529;
@@ -263,7 +264,7 @@
         <span class="close-logs" onclick="closeLogs()">&times;</span>
       </div>
       <div id="logsOutput">
-        <!-- A konténer logjai itt jelennek meg -->
+        Extracting container log entries is in progress...
       </div>
     </div>
   </div>
@@ -284,6 +285,7 @@
     let statsModalOpenCid = null;
     let logsModalOpenCid = null;
     let logsRefreshInterval = null;
+    let fetchingLogs = false; // Flag az párhuzamos fetch elkerüléséhez
 
     function startRefresh() {
       if (!refreshInterval) {
@@ -566,6 +568,8 @@
       modal.style.display = "block";
       const title = document.getElementById("logsTitle");
       title.textContent = `Container Logs - CID: ${cid}`;
+      // Mialatt a logok lekérése folyamatban van, mutatjuk a progress üzenetet
+      document.getElementById("logsOutput").innerHTML = "Extracting container log entries is in progress...";
       fetchLogs();
       logsRefreshInterval = setInterval(fetchLogs, 3000);
     }
@@ -576,14 +580,21 @@
     }
     function fetchLogs() {
       if (!logsModalOpenCid) return;
+      if (fetchingLogs) return;
+      fetchingLogs = true;
       fetch('/logs?cid=' + logsModalOpenCid)
         .then(response => response.json())
         .then(data => {
           const outputDiv = document.getElementById("logsOutput");
-          outputDiv.innerHTML = data.logs.replace(/\n/g, "<br>");
+          let newContent = data.logs.replace(/\n/g, "<br>");
+          outputDiv.innerHTML = newContent;
           outputDiv.scrollTop = outputDiv.scrollHeight;
+          fetchingLogs = false;
         })
-        .catch(err => console.error("Error fetching logs:", err));
+        .catch(err => {
+          console.error("Error fetching logs:", err);
+          fetchingLogs = false;
+        });
     }
     startRefresh();
     updateTable();
