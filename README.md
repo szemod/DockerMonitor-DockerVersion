@@ -70,9 +70,64 @@ Use the SSH credentials you provide during setup to log in, which should match t
 Docker Monitor is available on Docker Hub. Follow these steps to install and run it:
 
 1. **Pull the Docker Image:**
-
    Open a terminal and run:
+   
+    $ docker pull szemod/dockermonitor
 
-   ```bash
-   docker pull szemod/dockermonitor
+2. **Run the Docker Container:**
+   Launch the container with:
+
+    $ docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
+   
+3. **SSH Setup:**
+   On the first launch, you will be directed to the SSH setup page.
+
+4. **Configure SSH Settings:**
+   - The setup page will prompt you for your SSH Host, SSH Username, and SSH Password.
+   - Save the settings to configure the connection to your Docker host.
+   - After a successful setup, you will be redirected to the login page.
+
+## Login to the Dashboard
+
+Use the SSH Username and SSH Password provided during setup to log in.  
+Once authenticated, you can access real-time Docker container statistics via the web dashboard.
+
+## Repository Structure
+
+- **web_ctop.py**: Main Python script that retrieves Docker container statistics and serves the web dashboard.
+- **templates/index.html**: HTML template for the web interface.
+- **templates/login.html**: HTML template for the login page.
+- **templates/setup.html**: HTML template for the SSH setup page.
+- **Dockerfile**: Instructions for building the Docker image.
+- **requirements.txt**: Lists all required Python packages.
+- **config.py**: Configuration file where SSH credentials and port settings are stored.
+
+## Customization
+
+### SSH Configuration
+
+The default SSH credentials are stored in `config.py` and can be updated via the setup page.
+
+### Port Setting
+
+The application listens on port 5434 by default; modify the `PORT` variable in `config.py` to change this.
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgements
+
+- **Flask**: Web framework for building the dashboard.
+- **Paramiko**: Provides SSH connectivity to the Docker host.
+- **Gunicorn**: Production-ready WSGI server used for deployment.
+- **CHART.JS**: Used for real-time charting of container statistics.
+- **Docker**: Containerization platform that powers this solution.
+- Inspired by the functionality of ctop for real-time Docker monitoring.
+
+## Future Developments
+
+- Encrypted password management for enhanced security.
+- Enhanced logging and alerting features.
+- Additional container management capabilities.
 
