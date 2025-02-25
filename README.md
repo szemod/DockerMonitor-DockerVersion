@@ -82,18 +82,19 @@ Launch the container with:
     $ docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
    
 3. **SSH Setup:**
-   On the first launch, you will be directed to the SSH setup page.
+   - DockerMonitor will be available at [http://localhost:5434/](http://localhost:5434/).
+   - On the first launch, you will be directed to the SSH setup page.
 
-4. **Configure SSH Settings:**
+5. **Configure SSH Settings:**
    - The setup page will prompt you for your SSH Host, SSH Username, and SSH Password.
    - Save the settings to configure the connection to your Docker host.
    - After a successful setup, you will be redirected to the login page.
 
-5. **Login to the Dashboard:**
+6. **Login to the Dashboard:**
    - Use the SSH Username and SSH Password provided during setup to log in. 
    - Once authenticated, you can access real-time Docker container statistics via the web dashboard.
    - On the Login page, you can change the SSH Host, SSH Username, and SSH Password at any time, and you can connect to any HOST of your choice.
-
+   
 ## Repository Structure
 
 - **web_ctop.py**: Main Python script that retrieves Docker container statistics and serves the web dashboard.
