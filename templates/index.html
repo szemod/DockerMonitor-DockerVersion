@@ -5,14 +5,14 @@
   <title>Docker Monitor</title>
   <link rel="icon" href="/path/to/favicon.ico"> <!-- Add a correct path to your favicon -->
   <style>
-    /* dark mode default */
+    /* Alap sötét stílus */
     body {
       font-family: 'Courier New', monospace;
       margin: 20px;
       background: #1a1a1a;
       color: #e6f0e6;
     }
-    /* light mode */
+    /* Világos mód stílus */
     body.light-mode {
       background: #f8f9fa;
       color: #212529;
@@ -222,8 +222,8 @@
   <table id="containers-table">
     <thead>
       <tr>
-        <th id="th-name" style="width: 25%;" onclick="showNameFilter()">NAME</th>
-        <th style="width: 10%;" onclick="resetSorting()">CID</th>
+        <th style="width: 25%;" onclick="showNameFilter()">NAME</th>
+        <th class="cid-col" style="width: 10%;" onclick="resetSorting()">CID</th>
         <th style="width: 12%;" onclick="setSort('cpu')">CPU%</th>
         <th style="width: 12%;" onclick="setSort('mem')">MEM</th>
         <th style="width: 18%;">NET RX/TX</th>
@@ -277,7 +277,6 @@
     let filterText = "";
     let sortColumn = "name";
     let autoLogout = {{ 'true' if auto_logout else 'false' }};
-    let remainingSeconds = 600;
     let countdownInterval = null;
     let containerStats = {};
     let cpuChart = null;
@@ -285,7 +284,8 @@
     let statsModalOpenCid = null;
     let logsModalOpenCid = null;
     let logsRefreshInterval = null;
-    let fetchingLogs = false; // Flag az párhuzamos fetch elkerüléséhez
+    let fetchingLogs = false; // az párhuzamos fetch elkerüléséhez, ez lassíthatta...?
+    let lastActivityTime = Date.now(); // A legutóbbi aktivitás ideje (logout visszaszámláláshoz) tesztelve
 
     function startRefresh() {
       if (!refreshInterval) {
@@ -325,7 +325,7 @@
           });
           const tbody = document.getElementById('containers-body');
           tbody.innerHTML = data.map(container => {
-            const statusClass = container.status.toLowerCase();
+            let statusClass = container.status.toLowerCase();
             let cpuUsage = parseFloat(container.cpu) || 0;
             let cpuBarColor = "#007500";
             if (cpuUsage >= 200) { cpuBarColor = "red"; }
@@ -346,7 +346,7 @@
                     <button onclick="showLogs('${container.cid}')">LOGS</button>
                   </div>
                 </td>
-                <td>${container.cid}</td>
+                <td class="cid-col">${container.cid}</td>
                 <td>
                   <div class="progress-container">
                     <div class="progress-bar" style="width: ${container.cpu}%; background: ${cpuBarColor};"></div>
@@ -365,6 +365,7 @@
               </tr>
             `;
           }).join('');
+          updateResponsiveLayout();
           updateChartsIfOpen();
         })
         .catch(err => console.error("Error in updateTable:", err));
@@ -467,22 +468,28 @@
       if (!e.target.closest('.menu') && !e.target.closest('span[onclick^="showMenu"]')) { hideMenus(); }
       if (autoLogout) { resetAutoLogout(); }
     });
+    // Független visszaszámlálás – a lejárt idő alapján számol
     function startAutoLogoutCountdown() {
       const countdownElem = document.getElementById("countdown");
       if (!countdownElem) return;
       countdownInterval = setInterval(() => {
-        remainingSeconds--;
-        if (remainingSeconds < 0) { window.location.href = '/logout'; }
-        else { updateCountdownText(countdownElem); }
+        let elapsed = Math.floor((Date.now() - lastActivityTime) / 1000);
+        let remaining = 600 - elapsed;
+        if (remaining <= 0) {
+          clearInterval(countdownInterval);
+          window.location.href = '/logout';
+        } else {
+          updateCountdownText(countdownElem, remaining);
+        }
       }, 1000);
     }
     function resetAutoLogout() {
-      remainingSeconds = 600;
+      lastActivityTime = Date.now();
       if (!countdownInterval) { startAutoLogoutCountdown(); }
     }
-    function updateCountdownText(elem) {
-      let mm = Math.floor(remainingSeconds / 60);
-      let ss = remainingSeconds % 60;
+    function updateCountdownText(elem, remaining) {
+      let mm = Math.floor(remaining / 60);
+      let ss = remaining % 60;
       let mmStr = mm < 10 ? '0' + mm : '' + mm;
       let ssStr = ss < 10 ? '0' + ss : '' + ss;
       elem.textContent = mmStr + ':' + ssStr;
@@ -568,7 +575,6 @@
       modal.style.display = "block";
       const title = document.getElementById("logsTitle");
       title.textContent = `Container Logs - CID: ${cid}`;
-      // Mialatt a logok lekérése folyamatban van, mutatjuk a progress üzenetet
       document.getElementById("logsOutput").innerHTML = "Extracting container log entries is in progress...";
       fetchLogs();
       logsRefreshInterval = setInterval(fetchLogs, 3000);
@@ -596,9 +602,57 @@
           fetchingLogs = false;
         });
     }
+    // Responsive layout: Ha az ablak szélessége 1100px alatt van, a CID oszlop elrejtése és a többi oszlop szélességének újraszámolása
+    function updateResponsiveLayout() {
+      let width = window.innerWidth;
+      const ths = document.querySelectorAll("#containers-table thead th");
+      const rows = document.querySelectorAll("#containers-table tbody tr");
+      const originalWidths = ["25%", "10%", "12%", "12%", "18%", "18%", "10%"];
+      const newWidths = { 0: "26.32%", 2: "12.63%", 3: "12.63%", 4: "18.95%", 5: "18.95%", 6: "10.53%" };
+      if (width < 1100) {
+        if(ths[1]) {
+          ths[1].style.display = "none";
+        }
+        ths.forEach((th, index) => {
+          if(index !== 1) {
+            th.style.width = newWidths[index] || originalWidths[index];
+          }
+        });
+        rows.forEach(row => {
+          let cells = row.cells;
+          if(cells[1]) { cells[1].style.display = "none"; }
+          for(let i = 0; i < cells.length; i++){
+            if(i !== 1){
+              cells[i].style.width = newWidths[i] || originalWidths[i];
+            }
+          }
+        });
+      } else {
+        if(ths[1]) {
+          ths[1].style.display = "";
+          ths[1].style.width = originalWidths[1];
+        }
+        ths.forEach((th, index) => {
+          th.style.width = originalWidths[index];
+        });
+        rows.forEach(row => {
+          let cells = row.cells;
+          if(cells[1]) {
+            cells[1].style.display = "";
+            cells[1].style.width = originalWidths[1];
+          }
+          for(let i = 0; i < cells.length; i++){
+            cells[i].style.width = originalWidths[i];
+          }
+        });
+      }
+    }
+    window.addEventListener("resize", updateResponsiveLayout);
+
     startRefresh();
     updateTable();
     if (autoLogout) { startAutoLogoutCountdown(); }
+
     // Exportálás globális scope-ba
     window.showMenu = showMenu;
     window.hideMenus = hideMenus;
