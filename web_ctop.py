@@ -10,8 +10,6 @@ import os
 import time
 import paramiko
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
-
-# PORT értéke a config.py-ból
 from config import PORT
 
 app = Flask(__name__)
@@ -19,7 +17,7 @@ app.secret_key = 'supersecretkey'
 
 def is_configured():
     """
-    It checks whether any of the SSH credentials are provided in the config.py.
+    Checks if any of the SSH details are provided in config.py.
     """
     try:
         with open('config.py', 'r') as f:
@@ -31,11 +29,12 @@ def is_configured():
         ssh_password = config.get('SSH_PASSWORD', '')
         return bool(ssh_host and ssh_user and ssh_password)
     except Exception as e:
+        print(f"Error reading configuration: {e}")
         return False
 
 def get_ssh_credentials():
     """
-    It reads the contents of the config.py file and returns the SSH settings.
+    Reads the contents of the config.py file and returns the SSH settings.
     """
     try:
         with open('config.py', 'r') as f:
@@ -44,7 +43,7 @@ def get_ssh_credentials():
         exec(config_content, config)
         return config.get('SSH_PASSWORD'), config.get('SSH_HOST'), config.get('SSH_USER')
     except Exception as e:
-        print("Error reading config:", e)
+        print(f"Error reading config: {e}")
         return None, None, None
 
 def get_ssh_connection():
@@ -53,7 +52,12 @@ def get_ssh_connection():
         raise Exception("SSH credentials not configured properly.")
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)
+    try:
+        ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)
+    except (paramiko.ssh_exception.NoValidConnectionsError,
+            paramiko.ssh_exception.AuthenticationException) as e:
+        print(f"SSH connection error: {e}")
+        raise
     return ssh
 
 def convert_to_mb(value_str):
@@ -139,24 +143,35 @@ def fetch_docker_data():
     command_stats = """
     docker stats --all --no-stream --format "{{.Container}}|{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}"
     """
+
     try:
         ssh = get_ssh_connection()
+
+        # Ping the host before executing docker command
+        stdin, stdout, stderr = ssh.exec_command("ping -c 1 " + ssh.get_transport().getpeername()[0])
+        if stdout.read().decode().strip() == "":
+            raise Exception("Ping to SSH host failed, check the connection.")
+
         stdin, stdout, stderr = ssh.exec_command(command_stats)
         output_stats = stdout.read().decode()
         ssh.close()
+
     except Exception as e:
         print(f"Error fetching stats: {str(e)}")
         output_stats = ""
+
     containers = parse_docker_stats(output_stats)
+
     command_status = """ docker ps -a --format "{{.ID}}|{{.Status}}" """
     try:
-        ssh = get_ssh_connection()
+        ssh = get_ssh_connection()  # Creating a new SSH connection for status command
         stdin, stdout, stderr = ssh.exec_command(command_status)
         output_status = stdout.read().decode()
         ssh.close()
     except Exception as e:
         print(f"Error fetching status: {str(e)}")
         output_status = ""
+
     statuses = {}
     for line in output_status.strip().split('\n'):
         if not line:
@@ -165,26 +180,27 @@ def fetch_docker_data():
         if len(parts) == 2:
             container_id, stat = parts
             statuses[container_id[:12]] = parse_container_status(stat)
+
     for container in containers:
         container['status'] = statuses.get(container['cid'], 'unknown')
+
     max_used = max((c['mem_used_val'] for c in containers), default=0)
     for c in containers:
         if max_used > 0:
             c['mem_bar_percent'] = (c['mem_used_val'] / max_used) * 100
         else:
             c['mem_bar_percent'] = 0
+
     return containers
 
 @app.before_request
 def require_login():
-    # If the configuration isn't set up, it redirects to the setup page.
     if request.endpoint not in ['setup', 'static'] and not is_configured():
         return redirect(url_for('setup'))
     if request.endpoint not in ['login', 'setup', 'static']:
         if not session.get('logged_in'):
             return redirect(url_for('login'))
 
-# --- Setup page ---
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     message = None
@@ -208,7 +224,6 @@ def setup():
                 error = "An error occurred while saving the configuration!"
     return render_template('setup.html', message=message, error=error)
 
-# --- Login page ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -217,7 +232,6 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        # A tárolt SSH adatok alapján ellenőrizzük a bejelentkezést
         stored_ssh_password, stored_ssh_host, stored_ssh_user = get_ssh_credentials()
         if username == stored_ssh_user and password == stored_ssh_password:
             session['logged_in'] = True
@@ -266,7 +280,6 @@ def logs():
         return jsonify(success=False, error="No container id provided")
     try:
         ssh = get_ssh_connection()
-
         stdin, stdout, stderr = ssh.exec_command("docker ps -a -q --no-trunc")
         full_ids = stdout.read().decode().strip().splitlines()
         ssh.close()
