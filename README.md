@@ -7,7 +7,8 @@ You can access the monitoring dashboard remotely via `http://localhost:PORT`, wh
 
 Use the SSH credentials you provide during setup to log in, which should match the SSH host login details.
 
-![Dashboard Screenshot](https://github.com/user-attachments/assets/f9ce68a9-8e4d-4a52-9852-d14fa856b7c0)
+![image](https://github.com/user-attachments/assets/3dc41062-a2d4-4294-a843-183be150345e)
+
 ![Container Management](https://github.com/user-attachments/assets/b0ffdff0-0469-415c-ab5d-6ef3673adc95)
 
 ## The Goal of the Project
