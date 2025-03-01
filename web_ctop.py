@@ -16,9 +16,6 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
 def is_configured():
-    """
-    Checks if any of the SSH details are provided in config.py.
-    """
     try:
         with open('config.py', 'r') as f:
             config_content = f.read()
@@ -33,9 +30,6 @@ def is_configured():
         return False
 
 def get_ssh_credentials():
-    """
-    Reads the contents of the config.py file and returns the SSH settings.
-    """
     try:
         with open('config.py', 'r') as f:
             config_content = f.read()
@@ -112,6 +106,7 @@ def parse_docker_stats(output):
             cpu_percent = float(cpu.replace('%', ''))
         except ValueError:
             cpu_percent = 0.0
+
         mem_parts = mem.split('/')
         if len(mem_parts) == 2:
             mem_used, mem_total = mem_parts
@@ -125,6 +120,7 @@ def parse_docker_stats(output):
             used_mb = convert_to_mb(mem.strip())
             mem_percent = 0
             mem_used_formatted = f"{used_mb:.1f} MB"
+
         containers.append({
             'name': name,
             'cid': cid[:12],
@@ -143,54 +139,46 @@ def fetch_docker_data():
     command_stats = """
     docker stats --all --no-stream --format "{{.Container}}|{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}"
     """
-
     try:
         ssh = get_ssh_connection()
-
-        # Ping the host before executing docker command
-        stdin, stdout, stderr = ssh.exec_command("ping -c 1 " + ssh.get_transport().getpeername()[0])
-        if stdout.read().decode().strip() == "":
-            raise Exception("Ping to SSH host failed, check the connection.")
-
         stdin, stdout, stderr = ssh.exec_command(command_stats)
         output_stats = stdout.read().decode()
         ssh.close()
-
     except Exception as e:
         print(f"Error fetching stats: {str(e)}")
         output_stats = ""
-
     containers = parse_docker_stats(output_stats)
-
     command_status = """ docker ps -a --format "{{.ID}}|{{.Status}}" """
     try:
-        ssh = get_ssh_connection()  # Creating a new SSH connection for status command
+        ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command(command_status)
         output_status = stdout.read().decode()
         ssh.close()
     except Exception as e:
         print(f"Error fetching status: {str(e)}")
         output_status = ""
-
     statuses = {}
     for line in output_status.strip().split('\n'):
         if not line:
             continue
         parts = line.split('|')
         if len(parts) == 2:
-            container_id, stat = parts
+            container_id = parts[0]
+            stat = parts[1]
             statuses[container_id[:12]] = parse_container_status(stat)
-
-    for container in containers:
-        container['status'] = statuses.get(container['cid'], 'unknown')
-
-    max_used = max((c['mem_used_val'] for c in containers), default=0)
-    for c in containers:
+    max_used = 0
+    for i in range(len(containers)):
+        container = containers[i]
+        cid = container['cid']
+        container['status'] = statuses.get(cid, 'unknown')
+        if container['mem_used_val'] > max_used:
+            max_used = container['mem_used_val']
+    for i in range(len(containers)):
+        c = containers[i]
         if max_used > 0:
             c['mem_bar_percent'] = (c['mem_used_val'] / max_used) * 100
         else:
             c['mem_bar_percent'] = 0
-
     return containers
 
 @app.before_request
@@ -237,6 +225,7 @@ def login():
             session['logged_in'] = True
             session['dark_mode'] = True if request.form.get('dark_mode') == 'on' else False
             session['auto_logout'] = True if request.form.get('auto_logout') == 'on' else False
+            session['mobile_view'] = True if request.form.get('mobile_view') == 'on' else False
             return redirect(url_for('index'))
         else:
             error = "Invalid username or password!"
@@ -249,9 +238,16 @@ def logout():
 
 @app.route('/')
 def index():
-    return render_template('index.html',
-                           dark_mode=session.get('dark_mode', True),
-                           auto_logout=session.get('auto_logout', True))
+    if session.get('mobile_view', False):
+        return render_template('mobile.html',
+                               dark_mode=session.get('dark_mode', True),
+                               auto_logout=session.get('auto_logout', True),
+                               mobile_view=True)
+    else:
+        return render_template('index.html',
+                               dark_mode=session.get('dark_mode', True),
+                               auto_logout=session.get('auto_logout', True),
+                               mobile_view=False)
 
 @app.route('/data')
 def data():
@@ -264,7 +260,7 @@ def manage():
     container_id = request.json.get('cid')
     if action.lower() == 'resume':
         action = 'unpause'
-    command = f"docker {action} {container_id}"
+    command = f'docker {action} {container_id}'
     try:
         ssh = get_ssh_connection()
         ssh.exec_command(command)
@@ -284,19 +280,19 @@ def logs():
         full_ids = stdout.read().decode().strip().splitlines()
         ssh.close()
         full_id = None
-        for fid in full_ids:
-            if fid.startswith(cid_trunc):
-                full_id = fid
+        for id in full_ids:
+            if id.startswith(cid_trunc):
+                full_id = id
                 break
         if full_id is None:
-            full_id = cid_trunc  # fallback
-        command = f"docker logs --tail 100 {full_id} 2>&1"
+            full_id = cid_trunc
+        command = f'docker logs --tail 100 {full_id} 2>&1'
         ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command(command)
         logs_output = stdout.read().decode() + stderr.read().decode()
         ssh.close()
     except Exception as e:
-        logs_output = f"Error fetching logs: {str(e)}"
+        logs_output = f'Error fetching logs: {str(e)}'
     return jsonify(logs=logs_output)
 
 if __name__ == '__main__':
