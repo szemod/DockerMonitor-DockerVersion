@@ -7,7 +7,11 @@ You can access the monitoring dashboard remotely via `http://localhost:PORT`, wh
 
 Use the SSH credentials you provide during setup to log in, which should match the SSH host login details.
 
-![image](https://github.com/user-attachments/assets/3dc41062-a2d4-4294-a843-183be150345e)
+![image](https://github.com/user-attachments/assets/9bbb7970-2da6-4c91-8553-06bc79a5e411) ![image](https://github.com/user-attachments/assets/35982a9a-1ca2-4f73-9237-a53bbdac4900) ![image](https://github.com/user-attachments/assets/e30c6542-c78e-461e-8a60-2f600c6056ae)
+
+
+
+
 
 ![Container Management](https://github.com/user-attachments/assets/b0ffdff0-0469-415c-ab5d-6ef3673adc95)
 
@@ -51,7 +55,9 @@ Use the SSH credentials you provide during setup to log in, which should match t
   - Runs with Gunicorn as the production WSGI server to ensure better performance and reliability.
 
 - **Simple & Responsive UI:**  
-  - A minimal, clean interface built with HTML/CSS for straightforward monitoring.
+  - A minimal, clean interface built with HTML/CSS for straightforward monitoring,
+  - Built as a progressive web application (PWA) for a complete experience on both mobile and desktop.
+  - In mobile view on iOS, simply use the Shortcuts app for full-screen display.
 
 ## Getting Started
 
