@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Docker Monitor</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #e6f0e6;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background: #002200;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 300px;
+        }
+        .login-container h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .login-container form {
+            display: flex;
+            flex-direction: column;
+        }
+        .login-container input[type="text"],
+        .login-container input[type="password"] {
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .login-container .checkbox-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .login-container .checkbox-row label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .login-container .checkbox-row input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        .login-container button {
+            padding: 10px;
+            background: #007500;
+            border: none;
+            border-radius: 4px;
+            color: #e6f0e6;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .error {
+            color: #c21e0c;
+            text-align: center;
+        }
+        .message {
+            color: #28a745;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Login</h2>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        {% if message %}<p class="message">{{ message }}</p>{% endif %}
+        <form method="POST" action="/login">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <div class="checkbox-row">
+                <label>
+                    <input type="checkbox" name="auto_logout" checked>
+                    Auto logout
+                </label>
+                <label>
+                    <input type="checkbox" name="dark_mode" checked>
+                    Dark mode
+                </label>
+                <!-- ÚJ: Mobile view jelölőnégyzet -->
+                <label>
+                    <input type="checkbox" name="mobile_view">
+                    Mobile view
+                </label>
+            </div>
+            <button type="submit" name="action" value="login">Login</button>
+        </form>
+        <!-- SSH setup gomb -->
+        <form method="GET" action="/setup">
+            <button type="submit">SSH setup</button>
+        </form>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                }, function(err) {
+                    console.log('Service Worker registration failed:', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
