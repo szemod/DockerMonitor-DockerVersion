@@ -3,17 +3,13 @@ A Docker host monitoring tool that runs in its own Docker container and can moni
 
 Docker Monitor is a lightweight Python-based web application that provides real-time monitoring of Docker container resource usage through a web dashboard. Inspired by the command-line tool `ctop`, it displays essential metrics such as CPU, memory, network I/O, and container status (running, paused, stopped) while also allowing basic container management actions.
 
-You can access the monitoring dashboard remotely via `http://localhost:PORT`, where `PORT` is the port number specified in the configuration (default is 5434).
+You can access the monitoring dashboard locally or remotely (locally via `http://localhost:PORT`), where `PORT` is the port number specified when you run the container (default is 5434).
 
 Use the SSH credentials you provide during setup to log in, which should match the SSH host login details.
 
-![image](https://github.com/user-attachments/assets/9bbb7970-2da6-4c91-8553-06bc79a5e411) ![image](https://github.com/user-attachments/assets/35982a9a-1ca2-4f73-9237-a53bbdac4900) ![image](https://github.com/user-attachments/assets/e30c6542-c78e-461e-8a60-2f600c6056ae)
+![image](https://github.com/user-attachments/assets/07defbe4-7a57-4d5b-a3f7-6e916a9e404d) ![image](https://github.com/user-attachments/assets/13823764-17f4-4202-9e9a-b9921b85ba3f)
 
-
-
-
-
-![Container Management](https://github.com/user-attachments/assets/b0ffdff0-0469-415c-ab5d-6ef3673adc95)
+![image](https://github.com/user-attachments/assets/85a1c198-86ea-455a-a589-45196c799a2a)
 
 ## The Goal of the Project
 
@@ -23,6 +19,12 @@ Use the SSH credentials you provide during setup to log in, which should match t
   Allow for simple intervention actions, such as stopping, restarting, or pausing containers, directly from the dashboard.
 
 ## Features
+
+- **Simple & Responsive UI:**  
+  - A minimal, clean interface built with HTML/CSS for straightforward monitoring,
+  - Built as a progressive web application (PWA) for a complete experience on both mobile and desktop. (In mobile view on iOS, simply use the Shortcuts app for full-screen display as shown in the screenshots below.)
+    
+![image](https://github.com/user-attachments/assets/35982a9a-1ca2-4f73-9237-a53bbdac4900) ![image](https://github.com/user-attachments/assets/e30c6542-c78e-461e-8a60-2f600c6056ae)
 
 - **Real-Time Monitoring:**  
   - Displays live data for Docker containers including CPU usage, memory usage (with progress bars), network traffic, and I/O statistics.
@@ -37,8 +39,8 @@ Use the SSH credentials you provide during setup to log in, which should match t
 - **Filtering and Sorting:**  
   - Click on the "NAME" header to filter containers by name.
   - Click on "CPU" or "MEM" headers to sort containers by resource usage.  
-  ![Filtering and Sorting](https://github.com/user-attachments/assets/997ac9e2-88e5-4246-8261-b21bef0d657a)  
-  ![Sorting Screenshot](https://github.com/user-attachments/assets/8cb33330-f211-4b5f-8cde-8cb510132b5f)
+  ![image](https://github.com/user-attachments/assets/24756c80-7cd9-44ec-9b32-76dcfe242c3b)
+  ![image](https://github.com/user-attachments/assets/d20c9fb5-8493-4c7f-b14e-f94073b7a481)
 
 - **Remote Docker Host Access & Statistics:**  
   - Connects via SSH (using Paramiko) to a Docker host to retrieve container statistics.
@@ -54,11 +56,6 @@ Use the SSH credentials you provide during setup to log in, which should match t
 - **Production-Ready Deployment:**  
   - Runs with Gunicorn as the production WSGI server to ensure better performance and reliability.
 
-- **Simple & Responsive UI:**  
-  - A minimal, clean interface built with HTML/CSS for straightforward monitoring,
-  - Built as a progressive web application (PWA) for a complete experience on both mobile and desktop.
-  - In mobile view on iOS, simply use the Shortcuts app for full-screen display.
-
 ## Getting Started
 
 ### Prerequisites
@@ -70,7 +67,7 @@ Use the SSH credentials you provide during setup to log in, which should match t
 - **Docker Host:**  
   Access to a Docker host (local or remote) with valid SSH credentials for executing Docker commands.
 - **SSH Credentials:**  
-  You must have valid SSH credentials (host, username, and password) to connect to your Docker host.
+  You must have valid SSH credentials (host, username, and password) to connect to your Docker hosts.
 
 ### Installation
 
@@ -100,8 +97,10 @@ Here is the Docker Compose file (what you can also use within Portainer stack):
 3. **SSH Setup:**
    - DockerMonitor will be available at [http://localhost:5434/](http://localhost:5434/).
    - On the first launch, you will be directed to the SSH setup page.
+   - Multiple hosts can be added, which can easily be selected later in the login window.
 
 5. **Configure SSH Settings:**
+   - The last used Docker/SSH host is selected by default, but you can change it by selecting a different host on the login page.
    - The setup page will prompt you for your SSH Host, SSH Username, and SSH Password.
    - Save the settings to configure the connection to your Docker host.
    - After a successful setup, you will be redirected to the login page.
@@ -114,9 +113,14 @@ Here is the Docker Compose file (what you can also use within Portainer stack):
 ## Repository Structure
 
 - **web_ctop.py**: Main Python script that retrieves Docker container statistics and serves the web dashboard.
-- **templates/index.html**: HTML template for the web interface.
+- **templates/index.html**: HTML template for the desktop interface.
 - **templates/login.html**: HTML template for the login page.
 - **templates/setup.html**: HTML template for the SSH setup page.
+- **templates/mobile.html**: HTML template for the mobile interface.
+- **templates/service-worker.js**: Java script part for PWA.
+- **templates/manifest.json**: Jason file for PWA.
+- **templates/favicon.icon**: Icon file
+- **templates/favicon.png**: Icon file
 - **Dockerfile**: Instructions for building the Docker image.
 - **requirements.txt**: Lists all required Python packages.
 - **config.py**: Configuration file where SSH credentials and port settings are stored.
@@ -148,5 +152,5 @@ This project is licensed under the MIT License.
 
 - Encrypted password management for enhanced security.
 - Enhanced logging and alerting features.
-- Additional container management capabilities.
+
 
