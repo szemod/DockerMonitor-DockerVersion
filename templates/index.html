@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Docker Monitor</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    /* Base dark style */
+    body {
+      font-family: 'Courier New', monospace;
+      margin: 20px;
+      background: #1a1a1a;
+      color: #e6f0e6;
+    }
+    /* Light mode style */
+    body.light-mode {
+      background: #f8f9fa;
+      color: #212529;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 2px;
+      text-align: left;
+      border-bottom: 1px solid #303030;
+    }
+    thead th {
+      background-color: #002200;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      cursor: pointer;
+    }
+    body.light-mode thead th {
+      background-color: #e9ecef;
+      color: #212529;
+    }
+    tr:hover {
+      background-color: #003300;
+    }
+    body.light-mode tr:hover {
+      background-color: #dee2e6;
+    }
+    .progress-container {
+      height: 15px;
+      background: #002200;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+    body.light-mode .progress-container {
+      background: #e9ecef;
+    }
+    .progress-bar {
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #e6f0e6;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+      font-size: 16px;
+      white-space: nowrap;
+    }
+    body.light-mode .progress-text {
+      color: #212529;
+    }
+    .menu {
+      display: none;
+      position: absolute;
+      background-color: #303030;
+      border: 1px solid #444;
+      z-index: 10;
+      padding: 10px;
+    }
+    body.light-mode .menu {
+      background-color: #e9ecef;
+      border-color: #ccc;
+      color: #212529;
+    }
+    .menu button {
+      display: block;
+      background: none;
+      color: inherit;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .menu button:hover {
+      background: #444;
+    }
+    body.light-mode .menu button:hover {
+      background: #ccc;
+    }
+    .running { color: #43b302; }
+    .stopped { color: #c21e0c; }
+    .paused { color: #c2c20c; }
+    body.light-mode .running { color: #28a745; }
+    body.light-mode .stopped { color: #dc3545; }
+    body.light-mode .paused { color: #ffc107; }
+    .logout-header {
+      cursor: pointer;
+      text-decoration: none;
+      background-color: green;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      position: relative;
+    }
+    .logout-header:hover {
+      background-color: darkgreen;
+    }
+    #countdown {
+      display: block;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    /* STATISTICS MODAL */
+    #statsModal {
+      display: none;
+      position: fixed;
+      z-index: 100;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.7);
+    }
+    .modal-content {
+      background-color: #2b2b2b;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 1000px;
+    }
+    body.light-mode .modal-content {
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .close-modal {
+      float: right;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .chart-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: space-around;
+    }
+    .chart-box {
+      flex: 1 1 45%;
+      min-width: 300px;
+      height: 300px;
+      position: relative;
+    }
+    /* LOGS MODAL */
+    #logsModal {
+      display: none;
+      position: fixed;
+      z-index: 100;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.7);
+    }
+    .logs-content {
+      background-color: #2b2b2b;
+      margin: 15vh auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 70%;
+      max-width: 800px;
+      height: 70vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    body.light-mode .logs-content {
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .logs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .close-logs {
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #logsOutput {
+      background: black;
+      color: white;
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    /* Responsiveness for smaller screens */
+    @media (max-width: 1100px) {
+      #containers-table th:nth-child(2), #containers-table td:nth-child(2) {
+        display: none;  /* Hide the CID column */
+      }
+      #containers-table th:nth-child(3), #containers-table td:nth-child(3) {
+        width: 15%;  /* Set width for CPU column */
+      }
+      #containers-table th:nth-child(4), #containers-table td:nth-child(4) {
+        width: 15%;  /* Set width for MEM column */
+      }
+      #containers-table th:nth-child(5), #containers-table td:nth-child(5) {
+        width: 25%;  /* Set width for NET RX/TX column */
+      }
+      #containers-table th:nth-child(6), #containers-table td:nth-child(6) {
+        width: 25%;  /* Set width for IO R/W column */
+      }
+      #containers-table th:nth-child(7), #containers-table td:nth-child(7) {
+        width: 10%;  /* Set width for status column */
+      }
+    }
+
+    /* New styles for the sorting display */
+    .sort-icon {
+      margin-right: 5px;
+      color: #ccc;
+    }
+    .sorted {
+      background-color: #003300;  /* Background for sorted column */
+    }
+    body.light-mode .sorted {
+      background-color: #cfc;  /* Background for sorted column in light mode */
+    }
+    /* Hover effect for CPU% and MEM column */
+    #th-cpu:hover, #th-mem:hover {
+      background-color: #004400;
+    }
+    body.light-mode #th-cpu:hover, body.light-mode #th-mem:hover {
+      background-color: #ccc;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="{% if not dark_mode %}light-mode{% endif %}">
+  <table id="containers-table">
+    <thead>
+      <tr>
+        <th id="th-name" style="width: 25%;" onclick="showNameFilter()">NAME</th>
+        <th style="width: 10%;" onclick="resetSorting()">CID</th>
+        <!-- Icon + click event for CPU% sorting -->
+        <th style="width: 12%;" id="th-cpu" onclick="setSort('cpu')">
+          <span class="sort-icon">▼</span> CPU%
+        </th>
+        <!-- Icon + click event for MEM sorting -->
+        <th style="width: 12%;" id="th-mem" onclick="setSort('mem')">
+          <span class="sort-icon">▼</span> MEM
+        </th>
+        <th style="width: 18%;">NET RX/TX</th>
+        <th style="width: 18%;">IO R/W</th>
+        <th style="width: 10%;" onclick="window.location.href='/logout'" class="logout-header">
+          LOGOUT
+          {% if auto_logout %}
+          <span id="countdown">10:00</span>
+          {% endif %}
+        </th>
+      </tr>
+    </thead>
+    <tbody id="containers-body">
+    </tbody>
+  </table>
+
+  <!-- STATISTICS MODAL -->
+  <div id="statsModal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeStatistics()">&times;</span>
+      <h2 id="statsTitle">Container Statistics</h2>
+      <div class="chart-container">
+        <div class="chart-box">
+          <canvas id="cpuChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <canvas id="memChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS MODAL -->
+  <div id="logsModal">
+    <div class="logs-content">
+      <div class="logs-header">
+        <h2 id="logsTitle">Container Logs - CID: </h2>
+        <span class="close-logs" onclick="closeLogs()">&times;</span>
+      </div>
+      <div id="logsOutput">
+        Extracting container log entries is in progress...
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    let refreshInterval = null; // Interval for table refresh
+    let menuOpen = false; // Flag for menu state
+    let openMenuCid = null; // Currently open menu CID
+    let filterText = ""; // Filter text for searching containers
+    let sortColumn = "name"; // Current sort column
+    let autoLogout = {{ 'true' if auto_logout else 'false' }}; // Auto logout flag
+    let remainingSeconds = 600; // Time remaining for auto logout
+    let countdownInterval = null; // Interval for countdown timer
+    let containerStats = {}; // Object to store container statistics
+    let cpuChart = null; // Chart for CPU usage
+    let memChart = null; // Chart for memory usage
+    let statsModalOpenCid = null; // CID for open statistics modal
+    let logsModalOpenCid = null; // CID for open logs modal
+    let logsRefreshInterval = null; // Interval for refreshing logs
+    let fetchingLogs = false; // Flag to prevent concurrent fetch requests
+
+    function startRefresh() {
+      if (!refreshInterval) {
+        refreshInterval = setInterval(updateTable, 1000); // Start table refresh every second
+      }
+    }
+    function stopRefresh() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval); // Stop the refresh interval
+        refreshInterval = null;
+      }
+    }
+    function updateTable() {
+      fetch('/data') // Fetch the data from the server
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched data:", data);
+          if (!Array.isArray(data)) {
+            console.error("Data is not an array!");
+            return;
+          }
+          if (menuOpen) return; // Prevent updates while menu is open
+          let now = new Date(); // Current timestamp
+          data.forEach(container => {
+            let cid = container.cid;
+            if (!containerStats[cid]) { containerStats[cid] = []; }
+            containerStats[cid].push({ time: now, cpu: container.cpu, mem: container.mem_used_val });
+            if (containerStats[cid].length > 600) { containerStats[cid].shift(); } // Keep only the last 600 entries
+          });
+          if (filterText.trim() !== "") {
+            data = data.filter(container => container.name.toLowerCase().includes(filterText.toLowerCase())); // Filter containers by name
+          }
+          data.sort((a, b) => {
+            let valA = getSortValue(a, sortColumn);
+            let valB = getSortValue(b, sortColumn);
+            return sortColumn === "name" ? valA.localeCompare(valB) : valB - valA; // Sort based on current column
+          });
+          const tbody = document.getElementById('containers-body');
+          tbody.innerHTML = data.map(container => {
+            const statusClass = container.status.toLowerCase(); // Container status class
+            let cpuUsage = parseFloat(container.cpu) || 0; // Parse CPU usage
+            let cpuBarColor = "#007500"; // Default CPU bar color
+            if (cpuUsage >= 200) { cpuBarColor = "red"; } // Red if usage is high
+            else if (cpuUsage >= 100) { cpuBarColor = "orange"; } // Orange if usage is moderate
+            const barValue = container.mem_bar_percent || 0;
+            const barWidth = barValue.toFixed(1) + '%'; // Set memory bar width
+            return `
+              <tr>
+                <td style="position: relative;">
+                  <span class="${statusClass}" onclick="showMenu(event, '${container.cid}')">${container.name}</span>
+                  <div id="menu-${container.cid}" class="menu" onclick="event.stopPropagation()">
+                    <button onclick="manageContainer('start', '${container.cid}')">START</button>
+                    <button onclick="manageContainer('stop', '${container.cid}')">STOP</button>
+                    <button onclick="manageContainer('restart', '${container.cid}')">RESTART</button>
+                    <button onclick="manageContainer('pause', '${container.cid}')">PAUSE</button>
+                    <button onclick="manageContainer('resume', '${container.cid}')">RESUME</button>
+                    <button onclick="showStatistics('${container.cid}')">STATISTICS</button>
+                    <button onclick="showLogs('${container.cid}')">LOGS</button>
+                  </div>
+                </td>
+                <td>${container.cid}</td>
+                <td>
+                  <div class="progress-container">
+                    <div class="progress-bar" style="width: ${container.cpu}%; background: ${cpuBarColor};"></div>
+                    <span class="progress-text">${container.cpu_display}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="progress-container">
+                    <div class="progress-bar" style="width: ${barWidth}; background: #007bff;"></div>
+                    <span class="progress-text">${container.mem}</span>
+                  </div>
+                </td>
+                <td>${container.net}</td>
+                <td>${container.io}</td>
+                <td>${container.status}</td>
+              </tr>
+            `;
+          }).join(''); // Update table body with new data
+          updateChartsIfOpen(); // Update charts if modal is open
+        })
+        .catch(err => console.error("Error in updateTable:", err)); // Handle fetch errors
+    }
+    function updateChartsIfOpen() {
+      if (!statsModalOpenCid) return; // Check if statistics modal is open
+      if (!cpuChart || !memChart) return; // Ensure charts exist
+      const statsArray = containerStats[statsModalOpenCid] || []; // Get statistics for current container
+      const cpuLabels = statsArray.map(d => formatTime(d.time)); // Time labels for chart
+      const cpuData = statsArray.map(d => d.cpu); // CPU data for chart
+      const memData = statsArray.map(d => d.mem); // Memory data for chart
+      cpuChart.data.labels = cpuLabels; // Update chart labels
+      cpuChart.data.datasets[0].data = cpuData; // Update CPU data
+      cpuChart.update(); // Update chart
+      memChart.data.labels = cpuLabels; // Update memory chart labels
+      memChart.data.datasets[0].data = memData; // Update memory data
+      memChart.update(); // Update memory chart
+    }
+    function getSortValue(container, column) {
+      if (column === "name") { return container.name.toLowerCase(); }
+      else if (column === "cpu") { return parseFloat(container.cpu) || 0; }
+      else if (column === "mem") { return parseFloat(container.mem_used_val) || 0; }
+      return container.name.toLowerCase();
+    }
+    function showMenu(event, cid) {
+      menuOpen = true; // Set menu open state
+      event.stopPropagation(); // Stop event propagation
+      if (openMenuCid && openMenuCid !== cid) {
+        const oldMenu = document.getElementById(`menu-${openMenuCid}`);
+        if (oldMenu) { oldMenu.style.display = 'none'; } // Close previously opened menu
+      }
+      const menu = document.getElementById(`menu-${cid}`);
+      if (menu) {
+        if (menu.style.display === 'block') {
+          menu.style.display = 'none'; // Close current menu
+          menuOpen = false;
+          openMenuCid = null;
+          startRefresh(); // Restart refresh
+        } else {
+          menu.style.display = 'block'; // Open current menu
+          openMenuCid = cid;
+          stopRefresh(); // Stop refresh
+        }
+      }
+    }
+    function hideMenus() {
+      if (!menuOpen) return; // Return if no menu is open
+      if (openMenuCid) {
+        const menu = document.getElementById(`menu-${openMenuCid}`);
+        if (menu) { menu.style.display = 'none'; } // Hide open menu
+      }
+      menuOpen = false; // Reset menu state
+      openMenuCid = null; // Clear open menu CID
+      startRefresh(); // Restart table refresh
+    }
+    function manageContainer(action, cid) {
+      fetch('/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action, cid: cid }) // Send management action
+      })
+      .then(response => response.json())
+      .then(data => { updateTable(); hideMenus(); }) // Update table and hide menus after action
+      .catch(err => console.error("Error managing container:", err)); // Handle management errors
+    }
+    function showNameFilter() {
+      sortColumn = "name"; // Set sort column to name
+      const thName = document.getElementById("th-name");
+      thName.innerHTML = '<input type="text" id="nameFilterInput" placeholder="Filter by name" onkeyup="onNameFilterChange(event)" onblur="resetNameFilter()" />';
+      document.getElementById("nameFilterInput").focus(); // Focus on filter input
+    }
+    function onNameFilterChange(event) {
+      filterText = event.target.value; // Update filter text
+      updateTable(); // Refresh table based on filter
+    }
+    function resetNameFilter() {
+      const thName = document.getElementById("th-name");
+      thName.innerHTML = 'NAME'; // Reset header to NAME
+      thName.onclick = showNameFilter; // Reassign click event
+      updateTable(); // Update table
+    }
+
+    // Modified setSort function to reset sorting on double click
+    function setSort(column) {
+      const thName = document.getElementById("th-name");
+      if (thName.querySelector('input')) {
+        resetNameFilter(); // Reset name filter if active
+      }
+      if (sortColumn === column) {
+        // If clicked on the same column, reset to name sorting
+        sortColumn = "name";
+      } else {
+        sortColumn = column; // Set sort column to selected
+      }
+      highlightSortedColumn(); // Highlight the sorted column
+      updateTable(); // Refresh table
+    }
+
+    // Column highlighting based on sorting
+    function highlightSortedColumn() {
+      const thCpu = document.getElementById("th-cpu");
+      const thMem = document.getElementById("th-mem");
+      thCpu.classList.remove("sorted"); // Remove sorted class from CPU column
+      thMem.classList.remove("sorted"); // Remove sorted class from MEM column
+      if (sortColumn === "cpu") {
+        thCpu.classList.add("sorted"); // Highlight CPU column
+      } else if (sortColumn === "mem") {
+        thMem.classList.add("sorted"); // Highlight MEM column
+      }
+    }
+
+    function resetSorting() {
+      sortColumn = "name"; // Reset sorting to name
+      filterText = ""; // Clear filter text
+      const thName = document.getElementById("th-name");
+      thName.innerHTML = 'NAME'; // Reset header to NAME
+      thName.onclick = showNameFilter; // Reassign click event
+      highlightSortedColumn(); // Highlight sorted column
+      updateTable(); // Refresh table
+    }
+
+    document.getElementById("containers-body").addEventListener("click", function(e) {
+      if (e.target.tagName !== "INPUT" && !e.target.closest(".menu")) {
+        resetSorting(); // Reset sorting if clicking outside menu
+      }
+    });
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.menu') && !e.target.closest('span[onclick^="showMenu"]')) {
+        hideMenus(); // Hide menus if clicking outside
+      }
+      if (autoLogout) {
+        resetAutoLogout(); // Reset logout timer on interaction
+      }
+    });
+    function startAutoLogoutCountdown() {
+      const countdownElem = document.getElementById("countdown");
+      if (!countdownElem) return; // Check if countdown element exists
+      countdownInterval = setInterval(() => {
+        remainingSeconds--; // Decrease remaining time
+        if (remainingSeconds < 0) { window.location.href = '/logout'; } // Logout if timer expires
+        else { updateCountdownText(countdownElem); } // Update countdown display
+      }, 1000);
+    }
+    function resetAutoLogout() {
+      remainingSeconds = 600; // Reset remaining time for logout
+      if (!countdownInterval) {
+        startAutoLogoutCountdown(); // Start countdown if not already running
+      }
+    }
+    function updateCountdownText(elem) {
+      let mm = Math.floor(remainingSeconds / 60); // Calculate minutes
+      let ss = remainingSeconds % 60; // Calculate seconds
+      let mmStr = mm < 10 ? '0' + mm : '' + mm; // Format minutes
+      let ssStr = ss < 10 ? '0' + ss : '' + ss; // Format seconds
+      elem.textContent = mmStr + ':' + ssStr; // Update countdown text
+    }
+    // STATISTICS MODAL + CHART.JS
+    function showStatistics(cid) {
+      hideMenus(); // Close any open menus
+      statsModalOpenCid = cid; // Set currently open statistics modal CID
+      const modal = document.getElementById("statsModal");
+      modal.style.display = "block"; // Show statistics modal
+      const title = document.getElementById("statsTitle");
+      title.textContent = `Container Statistics - CID: ${cid}`; // Set title
+      if (cpuChart) { cpuChart.destroy(); } // Destroy existing CPU chart
+      if (memChart) { memChart.destroy(); } // Destroy existing memory chart
+      const statsArray = containerStats[cid] || []; // Get statistics for current container
+      const cpuLabels = statsArray.map(d => formatTime(d.time)); // Time labels for chart
+      const cpuData = statsArray.map(d => d.cpu); // CPU data for chart
+      const memData = statsArray.map(d => d.mem); // Memory data for chart
+      const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+      cpuChart = new Chart(cpuCtx, {
+        type: 'line',
+        data: {
+          labels: cpuLabels, // Chart labels
+          datasets: [{
+            label: 'CPU (%)',
+            data: cpuData, // CPU data
+            borderColor: 'rgba(75,192,192,1)',
+            backgroundColor: 'rgba(75,192,192,0.2)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointHitRadius: 10
+          }]
+        },
+        options: {
+          scales: {
+            x: { display: true, title: { display: true, text: 'Time' } }, // X-axis settings
+            y: { min: 0, max: 100, title: { display: true, text: 'CPU Usage (%)' } } // Y-axis settings
+          },
+          plugins: { tooltip: { enabled: true } } // Enable tooltip
+        }
+      });
+      const memCtx = document.getElementById('memChart').getContext('2d');
+      memChart = new Chart(memCtx, {
+        type: 'line',
+        data: {
+          labels: cpuLabels, // Chart labels for memory
+          datasets: [{
+            label: 'Memory (MB)',
+            data: memData, // Memory data
+            borderColor: 'rgba(255,99,132,1)',
+            backgroundColor: 'rgba(255,99,132,0.2)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointHitRadius: 10
+          }]
+        },
+        options: {
+          scales: {
+            x: { display: true, title: { display: true, text: 'Time' } }, // X-axis settings for memory
+            y: { beginAtZero: true, title: { display: true, text: 'Memory (MB)' } } // Y-axis settings for memory
+          },
+          plugins: { tooltip: { enabled: true } } // Enable tooltip
+        }
+      });
+    }
+    function closeStatistics() {
+      document.getElementById("statsModal").style.display = "none"; // Hide statistics modal
+      statsModalOpenCid = null; // Clear open statistics CID
+    }
+    function formatTime(date) {
+      let h = date.getHours(), m = date.getMinutes(), s = date.getSeconds(); // Get hours, minutes, seconds
+      return (h < 10 ? '0' + h : h) + ':' + (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s); // Format time
+    }
+    // LOGS MODAL FUNCTIONS
+    function showLogs(cid) {
+      hideMenus(); // Close any open menus
+      logsModalOpenCid = cid; // Set currently open logs modal CID
+      const modal = document.getElementById("logsModal");
+      modal.style.display = "block"; // Show logs modal
+      const title = document.getElementById("logsTitle");
+      title.textContent = `Container Logs - CID: ${cid}`; // Set title
+      document.getElementById("logsOutput").innerHTML = "Extracting container log entries is in progress..."; // Display loading message
+      fetchLogs(); // Fetch logs
+      logsRefreshInterval = setInterval(fetchLogs, 3000); // Refresh logs every 3 seconds
+    }
+    function closeLogs() {
+      document.getElementById("logsModal").style.display = "none"; // Hide logs modal
+      logsModalOpenCid = null; // Clear open logs CID
+      clearInterval(logsRefreshInterval); // Clear refresh interval
+    }
+    function fetchLogs() {
+      if (!logsModalOpenCid) return; // Return if no logs modal is open
+      if (fetchingLogs) return; // Prevent concurrent fetch requests
+      fetchingLogs = true; // Set fetching flag
+      fetch('/logs?cid=' + logsModalOpenCid) // Fetch logs from server
+        .then(response => response.json())
+        .then(data => {
+          const outputDiv = document.getElementById("logsOutput");
+          let newContent = data.logs.replace(/\n/g, "<br>"); // Format logs for display
+          outputDiv.innerHTML = newContent; // Update logs output
+          outputDiv.scrollTop = outputDiv.scrollHeight; // Scroll to bottom
+          fetchingLogs = false; // Reset fetching flag
+        })
+        .catch(err => {
+          console.error("Error fetching logs:", err); // Handle fetch errors
+          fetchingLogs = false; // Reset fetching flag
+        });
+    }
+    startRefresh(); // Start table refresh
+    updateTable(); // Initial table update
+    if (autoLogout) {
+      startAutoLogoutCountdown(); // Start countdown if auto logout is enabled
+    }
+    // Export functions to global scope
+    window.showMenu = showMenu;
+    window.hideMenus = hideMenus;
+    window.setSort = setSort;
+    window.resetSorting = resetSorting;
+    window.showNameFilter = showNameFilter;
+    window.onNameFilterChange = onNameFilterChange;
+    window.resetNameFilter = resetNameFilter;
+    window.manageContainer = manageContainer;
+    window.showStatistics = showStatistics;
+    window.closeStatistics = closeStatistics;
+    window.showLogs = showLogs;
+    window.closeLogs = closeLogs;
+  })();
+  // Service Worker and manifest file registration
+  if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(registration) {
+              console.log('Service Worker registered with scope:', registration.scope); // Log registration success
+          }, function(err) {
+              console.log('Service Worker registration failed:', err); // Log registration failure
+          });
+      });
+  }
+  </script>
+</body>
+</html>

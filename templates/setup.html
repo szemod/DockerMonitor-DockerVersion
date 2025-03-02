@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSH Setup - Docker Monitor</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            background: #1a1a1a; /* Background color */
+            color: #e6f0e6; /* Text color */
+            font-family: 'Courier New', monospace; /* Font style */
+            display: flex; /* Flexbox for centering */
+            align-items: center; /* Align items vertically */
+            justify-content: center; /* Align items horizontally */
+            height: 100vh; /* Full viewport height */
+            margin: 0; /* Remove default margin */
+        }
+        .setup-container {
+            background: #002200; /* Container background */
+            padding: 20px; /* Inner spacing */
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); /* Shadow effect */
+            width: 350px; /* Fixed width */
+        }
+        .setup-container h2 {
+            text-align: center; /* Center heading */
+        }
+        .hosts-list {
+            margin-bottom: 15px; /* Spacing below the list */
+        }
+        .hosts-list table {
+            width: 100%; /* Full width for the table */
+            border-collapse: collapse; /* Merge table borders */
+        }
+        .hosts-list th, .hosts-list td {
+            border: 1px solid #004400; /* Table cell border */
+            padding: 5px; /* Cell padding */
+            text-align: center; /* Center text in cells */
+        }
+        .button-group {
+            display: flex; /* Flexbox for button layout */
+            flex-direction: column; /* Vertical button layout */
+            gap: 10px; /* Space between buttons */
+        }
+        .button-group button {
+            padding: 10px; /* Button padding */
+            background: #007500; /* Button background color */
+            border: none; /* No border */
+            border-radius: 4px; /* Rounded button edges */
+            color: #e6f0e6; /* Button text color */
+            cursor: pointer; /* Pointer cursor on hover */
+            font-weight: bold; /* Bold button text */
+        }
+        .button-group button:disabled {
+            background: #555; /* Background for disabled buttons */
+            cursor: not-allowed; /* Not-allowed cursor */
+        }
+        .input-fields {
+            display: none; /* Hide input fields initially */
+            flex-direction: column; /* Vertical input layout */
+            gap: 10px; /* Space between inputs */
+            margin-bottom: 10px; /* Spacing below input fields */
+        }
+        .input-fields input[type="text"],
+        .input-fields input[type="password"] {
+            padding: 10px; /* Input padding */
+            border: none; /* No border */
+            border-radius: 4px; /* Rounded input edges */
+            font-size: 14px; /* Input font size */
+        }
+        .error {
+            color: #c21e0c; /* Error message color */
+            text-align: center; /* Center error message */
+        }
+        .message {
+            color: #28a745; /* Success message color */
+            text-align: center; /* Center success message */
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h2>SSH Setup</h2>
+        {% if error %}
+            <p class="error">{{ error }}</p> <!-- Display error message -->
+        {% endif %}
+        {% if message %}
+            <p class="message">{{ message }}</p> <!-- Display success message -->
+        {% endif %}
+        <div class="hosts-list">
+            <strong>Added Docker/SSH hosts:</strong>
+            {% if hosts %}
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Docker Host Name</th>
+                    <th>SSH Host</th>
+                </tr>
+                {% for host in hosts %}
+                <tr>
+                    <td>{{ loop.index }}</td> <!-- Host index -->
+                    <td>{{ host.docker_host_name }}</td> <!-- Docker host name -->
+                    <td>{{ host.ssh_host }}</td> <!-- SSH host name -->
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p>No hosts added yet.</p> <!-- Message when no hosts are present -->
+            {% endif %}
+        </div>
+        <div class="button-group">
+            <button id="addHostBtn" onclick="showInputFields()">Add Host</button> <!-- Button to show input fields -->
+            <div id="inputFields" class="input-fields">
+                <input type="text" id="dockerHostName" placeholder="Docker Host Name"> <!-- Input for Docker Host Name -->
+                <input type="text" id="sshHost" placeholder="SSH Host"> <!-- Input for SSH Host -->
+                <input type="text" id="sshUser" placeholder="SSH Username"> <!-- Input for SSH Username -->
+                <input type="password" id="sshPassword" placeholder="SSH Password"> <!-- Input for SSH Password -->
+            </div>
+            <button id="saveBtn" onclick="saveSettings()" disabled>Save SSH settings</button> <!-- Button to save settings -->
+            <button id="loginBtn" onclick="goToLogin()" disabled>Login page</button> <!-- Button to navigate to login page -->
+        </div>
+    </div>
+    <script>
+        function showInputFields() {
+            document.getElementById('inputFields').style.display = 'flex'; // Display input fields
+            document.getElementById('addHostBtn').disabled = true; // Disable Add Host button
+            checkFields(); // Validate input fields
+        }
+
+        function checkFields() {
+            const dockerHostName = document.getElementById('dockerHostName').value.trim(); // Get Docker host name
+            const sshHost = document.getElementById('sshHost').value.trim(); // Get SSH host
+            const sshUser = document.getElementById('sshUser').value.trim(); // Get SSH username
+            const sshPassword = document.getElementById('sshPassword').value.trim(); // Get SSH password
+            const saveBtn = document.getElementById('saveBtn'); // Save button reference
+            if (dockerHostName && sshHost && sshUser && sshPassword) {
+                saveBtn.disabled = false; // Enable save button if all fields are filled
+            } else {
+                saveBtn.disabled = true; // Disable save button if any field is empty
+            }
+        }
+
+        // Listen for input events on fields
+        document.getElementById('dockerHostName').addEventListener('input', checkFields);
+        document.getElementById('sshHost').addEventListener('input', checkFields);
+        document.getElementById('sshUser').addEventListener('input', checkFields);
+        document.getElementById('sshPassword').addEventListener('input', checkFields);
+
+        function saveSettings() {
+            const saveBtn = document.getElementById('saveBtn'); // Save button reference
+            if (saveBtn.disabled) {
+                alert("Please fill in all the fields."); // Alert if fields are not filled
+                return;
+            }
+            // Create a dynamic form for POST submission
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/setup';
+
+            const dockerHostName = document.getElementById('dockerHostName').value.trim(); // Get Docker host name
+            const sshHost = document.getElementById('sshHost').value.trim(); // Get SSH host
+            const sshUser = document.getElementById('sshUser').value.trim(); // Get SSH username
+            const sshPassword = document.getElementById('sshPassword').value.trim(); // Get SSH password
+
+            const fields = {
+                'docker_host_name': dockerHostName,
+                'ssh_host': sshHost,
+                'ssh_user': sshUser,
+                'ssh_password': sshPassword
+            };
+
+            for (const key in fields) {
+                const input = document.createElement('input'); // Create hidden input for each field
+                input.type = 'hidden';
+                input.name = key;
+                input.value = fields[key];
+                form.appendChild(input);
+            }
+            document.body.appendChild(form); // Append form to body
+            form.submit(); // Submit the form
+        }
+
+        function goToLogin() {
+            if (document.getElementById('loginBtn').disabled) {
+                alert("Please add at least one host first."); // Alert if login button is disabled
+                return;
+            }
+            window.location.href = '/login'; // Navigate to login page
+        }
+
+        // Enable Login button on page load if hosts exist
+        window.onload = function() {
+            const hostsExist = {{ hosts|length }} > 0; // Check for existing hosts
+            document.getElementById('loginBtn').disabled = !hostsExist; // Enable or disable login button
+            // Change button text if hosts exist
+            if (hostsExist) {
+                document.getElementById('addHostBtn').textContent = 'Add New Host';
+            }
+        };
+    </script>
+</body>
+</html>

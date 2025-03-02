@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Docker Monitor</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body {
+            background: #1a1a1a; /* Background color of the body */
+            color: #e6f0e6; /* Text color */
+            font-family: 'Courier New', monospace; /* Font style */
+            display: flex; /* Flexbox for alignment */
+            align-items: center; /* Center items vertically */
+            justify-content: center; /* Center items horizontally */
+            height: 100vh; /* Full viewport height */
+            margin: 0; /* No margin */
+        }
+        .login-container {
+            background: #002200; /* Background for the login container */
+            padding: 20px; /* Padding around the container */
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); /* Shadow effect */
+            width: 350px; /* Fixed width */
+        }
+        .login-container h2 {
+            margin-top: 0; /* Remove top margin for header */
+            text-align: center; /* Center the header text */
+        }
+        .login-container form {
+            display: flex; /* Flexbox for form layout */
+            flex-direction: column; /* Stack form elements vertically */
+            gap: 10px; /* Space between elements */
+        }
+        .login-container form + form {
+            margin-top: 10px; /* Space between consecutive forms */
+        }
+        .login-container input[type="text"],
+        .login-container input[type="password"] {
+            padding: 10px; /* Padding for input fields */
+            border: none; /* No border */
+            border-radius: 4px; /* Rounded corners for inputs */
+            font-size: 14px; /* Font size for inputs */
+        }
+        .login-container select {
+            padding: 10px; /* Padding for select dropdown */
+            border: none; /* No border */
+            border-radius: 4px; /* Rounded corners for select */
+            font-size: 16px; /* Font size for select */
+            height: calc(10px + 1.8em); /* Height adjustment */
+            background: #004400; /* Background for select */
+            color: #e6f0e6; /* Text color for select */
+        }
+        .login-container .checkbox-row {
+            display: flex; /* Flexbox for checkbox layout */
+            flex-direction: column; /* Stack checkboxes vertically */
+            gap: 5px; /* Space between checkboxes */
+        }
+        .login-container .checkbox-row label {
+            display: flex; /* Flexbox for label layout */
+            align-items: center; /* Center checkbox with text */
+            cursor: pointer; /* Pointer cursor on hover */
+        }
+        .login-container .checkbox-row input[type="checkbox"] {
+            margin-right: 5px; /* Space between checkbox and label */
+        }
+        .login-container button {
+            padding: 10px; /* Padding for buttons */
+            background: #007500; /* Background color for buttons */
+            border: none; /* No border */
+            border-radius: 4px; /* Rounded corners for buttons */
+            color: #e6f0e6; /* Text color for buttons */
+            cursor: pointer; /* Pointer cursor on hover */
+            font-weight: bold; /* Bold text for buttons */
+        }
+        .error {
+            color: #c21e0c; /* Error message color */
+            text-align: center; /* Center error text */
+        }
+        .message {
+            color: #28a745; /* Success message color */
+            text-align: center; /* Center message text */
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>Login</h2>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %} <!-- Display error if exists -->
+        {% if message %}<p class="message">{{ message }}</p>{% endif %} <!-- Display message if exists -->
+        <form method="POST" action="/login"> <!-- Form for login -->
+            <label for="selected_host">Select Docker Host:</label>
+            <select name="selected_host" id="selected_host"> <!-- Dropdown for selecting Docker host -->
+                {% for host in hosts %}
+                <option value="{{ host.docker_host_name }}" {% if host.docker_host_name == default_host %}selected{% endif %}>{{ host.docker_host_name }}</option> <!-- Options for Docker hosts -->
+                {% endfor %}
+            </select>
+            <input type="text" name="username" placeholder="Username" required> <!-- Input for username -->
+            <input type="password" name="password" placeholder="Password" required> <!-- Input for password -->
+            <div class="checkbox-row"> <!-- Container for checkboxes -->
+                <label>
+                    <input type="checkbox" name="auto_logout" checked> <!-- Checkbox for auto logout -->
+                    Auto logout
+                </label>
+                <label>
+                    <input type="checkbox" name="dark_mode" checked> <!-- Checkbox for dark mode -->
+                    Dark mode
+                </label>
+                <label>
+                    <input type="checkbox" name="mobile_view"> <!-- Checkbox for mobile view -->
+                    Mobile view
+                </label>
+            </div>
+            <button type="submit" name="action" value="login">Login</button> <!-- Login button -->
+        </form>
+        <form method="GET" action="/setup"> <!-- Form for SSH setup -->
+            <button type="submit">SSH setup</button> <!-- SSH setup button -->
+        </form>
+    </div>
+    <script>
+        if ('serviceWorker' in navigator) { // Check if service worker is supported
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) { // Register service worker
+                    console.log('Service Worker registered with scope:', registration.scope); // Log successful registration
+                }, function(err) {
+                    console.log('Service Worker registration failed:', err); // Log registration failure
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Docker Monitor - Mobile</title>
+  <link rel="icon" href="/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- FontAwesome icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* Basic styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Courier New', monospace;
+    }
+    body.dark-mode { background: #1a1a1a; color: #e6f0e6; }
+    /* Light mode background */
+    body.light-mode { background: #c7c2b5; color: #212529; }
+
+    /* Single sticky header: top row + button row */
+    #mobile-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: inherit;
+      border-bottom: 1px solid #444;
+    }
+    /* Top row: LOGOUT left, DockerMonitor center */
+    #header-top {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #444;
+    }
+    #logout-btn {
+      background-color: green;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-right: 10px;
+    }
+    #logout-btn:hover { background-color: darkgreen; }
+    #mobile-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      flex: 1;
+      margin: 0 10px;
+      cursor: pointer;
+    }
+
+    /* Second row: NAME, CPU, MEM buttons, descending icons for CPU/MEM */
+    #header-buttons {
+      display: flex;
+      gap: 5px;
+      padding: 5px;
+    }
+    /* Default background for buttons */
+    #header-buttons .btn {
+      flex: 1;
+      text-align: center;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #header-buttons .btn:hover { background-color: #444; }
+
+    /* Filter input field */
+    #mobile-filter-row {
+      display: none;
+      text-align: center;
+      margin-bottom: 5px;
+      padding: 5px;
+      border-top: 1px solid #444;
+    }
+    #mobile-filter-row input {
+      width: 90%;
+      font-size: 16px;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #666;
+    }
+
+    /* Container list */
+    #mobile-containers {
+      margin-top: 0;
+      margin-bottom: 60px; /* space for fixed bottom menu */
+      padding: 5px;
+      flex-grow: 1;
+    }
+    .container-block {
+      border: 2px solid #007500;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      padding: 5px;
+    }
+    body.light-mode .container-block { border-color: #28a745; }
+
+    /* Selected container background color */
+    body.dark-mode .container-block.selected {
+      background-color: rgba(0, 100, 0, 0.8);
+    }
+    body.light-mode .container-block.selected {
+      background-color: rgba(144, 238, 144, 0.8);
+    }
+
+    .mobile-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+    }
+    .mobile-container-name {
+      flex: 1;
+      text-align: left;
+      overflow-wrap: break-word;
+      white-space: normal;
+      padding: 5px;
+    }
+    .mobile-container-status {
+      margin-left: 10px;
+      font-weight: bold;
+      text-align: right;
+    }
+    .mobile-row-2,
+    .mobile-row-4 {
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .mobile-row-3 {
+      display: flex;
+      justify-content: space-between;
+      gap: 4%;
+    }
+    .mobile-right {
+      text-align: right;
+    }
+
+    /* Buttons styling */
+    .btn {
+      cursor: pointer;
+      background-color: green;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .btn:hover { background-color: darkgreen; }
+
+    /* Progress bar styling */
+    .progress-container {
+      height: 15px;
+      background: #002200;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+    body.light-mode .progress-container { background: #e9ecef; }
+    .progress-bar {
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+    body.dark-mode .progress-text { color: #e6f0e6; }
+    body.light-mode .progress-text { color: #212529; }
+
+    /* LOGS MODAL (under top bar, above bottom menu) */
+    #logsModal {
+      display: none;
+      position: fixed;
+      z-index: 300;
+      left: 0; right: 0;
+      top: 100px;
+      bottom: 60px;
+      background-color: #2b2b2b;
+      overflow-y: auto;
+      border-top: 1px solid #444;
+      border-bottom: 1px solid #444;
+    }
+    body.light-mode #logsModal {
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .logs-content {
+      border-radius: 8px;
+      margin: 0;
+      padding: 10px;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      position: relative;
+    }
+    .close-logs {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    /* Terminal-like log window */
+    #logsOutput {
+      background: black;
+      color: green;
+      font-family: monospace;
+      padding: 10px;
+      border-radius: 4px;
+      height: calc(100% - 40px);
+      overflow-y: auto;
+      margin-top: 40px;
+    }
+
+    /* Fixed bottom menu: 10px from bottom of screen to be above white bar */
+    .fixed-menu {
+      position: fixed;
+      bottom: 10px;
+      left: 0; right: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-evenly;
+      background: inherit;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      z-index: 300;
+    }
+    .fixed-menu i {
+      font-size: 24px;
+      cursor: pointer;
+    }
+    /* 5 icons: START, STOP, RESTART, PAUSE, LOGS */
+    /* (STATISTICS feature removed) */
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="{% if dark_mode %}dark-mode{% else %}light-mode{% endif %}">
+
+  <!-- Single sticky header: top row + button row -->
+  <div id="mobile-header">
+    <!-- Top row: LOGOUT left, DockerMonitor center -->
+    <div id="header-top">
+      <button id="logout-btn" onclick="window.location.href='/logout'">
+        LOGOUT
+        {% if auto_logout %}
+          <br><span id="countdown">10:00</span>
+        {% endif %}
+      </button>
+      <div id="mobile-title" onclick="resetMobileFilters()">DockerMonitor</div>
+    </div>
+
+    <!-- NAME, CPU, MEM buttons, descending icons for CPU/MEM -->
+    <div id="header-buttons">
+      <button class="btn" onclick="toggleMobileFilter()">NAME</button>
+      <button class="btn" onclick="setSortMobile('cpu')">
+        <i class="fas fa-sort-amount-down-alt"></i> CPU
+      </button>
+      <button class="btn" onclick="setSortMobile('mem')">
+        <i class="fas fa-sort-amount-down-alt"></i> MEM
+      </button>
+    </div>
+
+    <!-- NAME filter input -->
+    <div id="mobile-filter-row">
+      <input type="text" id="mobileNameFilterInput" placeholder="Filter by name" onkeyup="onMobileNameFilterChange(event)">
+    </div>
+  </div>
+
+  <!-- Container list -->
+  <div id="mobile-containers"></div>
+
+  <!-- LOGS MODAL (STATISTICS feature removed) -->
+  <div id="logsModal">
+    <div class="logs-content">
+      <span class="close-logs" onclick="closeLogs()">&times;</span>
+      <h3 id="logsTitle" style="margin:0; font-size:16px;"></h3>
+      <div id="logsOutput">
+        Extracting container log entries is in progress...
+      </div>
+    </div>
+  </div>
+
+  <!-- Fixed bottom button menu (icons) -->
+  <div class="fixed-menu">
+    <!-- START/RESUME icon -->
+    <i class="fas fa-play" onclick="if(selectedCid){ fixedStartAction(); } else { alert('Please select a container'); }"></i>
+    <i class="fas fa-stop" onclick="if(selectedCid){ manageContainerMobile('stop', selectedCid); } else { alert('Please select a container'); }"></i>
+    <i class="fas fa-redo" onclick="if(selectedCid){ manageContainerMobile('restart', selectedCid); } else { alert('Please select a container'); }"></i>
+    <i class="fas fa-pause" onclick="if(selectedCid){ manageContainerMobile('pause', selectedCid); } else { alert('Please select a container'); }"></i>
+    <i class="fas fa-file-alt" onclick="if(selectedCid){ showLogs(selectedCid); } else { alert('Please select a container'); }"></i>
+  </div>
+
+  <script>
+    var selectedCid = null;      // Selected container ID
+    var selectedStatus = null;   // Selected container status
+
+    var containerStats = {};
+    var logsModalOpenCid = null;
+    var logsRefreshIntervalID = null;
+
+    var autoLogout = {% if auto_logout %}true{% else %}false{% endif %};
+    var lastActivityTime = Date.now();
+    var countdownIntervalID = null;
+
+    // Sorting settings
+    var mobileRefreshIntervalID = null; // Refresh interval for mobile view
+    var mobile_filterText = ""; // Filter text for name
+    var mobile_sortColumn = "name"; // Sorting column
+
+    // On load
+    window.onload = function() {
+      startRefreshMobile();  // Starts the container refresh
+      updateMobileView();     // Updates the mobile view
+      registerServiceWorker(); // Registers service worker
+      if (autoLogout) startAutoLogoutCountdown(); // Initiates auto logout countdown if enabled
+    };
+
+    function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+        .then(function(registration) {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(function(error) {
+          console.error('Service Worker registration failed:', error);
+        });
+      }
+    }
+
+    /* AUTO LOGOUT */
+    function startAutoLogoutCountdown(){
+      var countdownElem = document.getElementById("countdown");
+      if(!countdownElem) return;
+      countdownIntervalID = setInterval(function(){
+        var elapsed = Math.floor((Date.now()-lastActivityTime)/1000); // Calculate elapsed time
+        var remaining = 600 - elapsed; // Remaining time until auto logout
+        if(remaining<=0){
+          clearInterval(countdownIntervalID);
+          window.location.href='/logout'; // Redirect to logout
+        } else {
+          updateCountdownText(countdownElem, remaining); // Update countdown display
+        }
+      },1000);
+    }
+    function resetAutoLogout(){ lastActivityTime = Date.now(); } // Resets last activity time
+    function updateCountdownText(elem, remaining){
+      var mm = Math.floor(remaining/60), ss = remaining%60; // Calculate minutes and seconds
+      elem.textContent = (mm<10?'0':'')+mm + ':' + (ss<10?'0':'')+ss; // Update countdown text
+    }
+
+    /* Refresh / Filter functions */
+    function startRefreshMobile(){
+      if(!mobileRefreshIntervalID){
+        mobileRefreshIntervalID = setInterval(updateMobileView, 1000); // Start refresh every second
+      }
+    }
+    function stopRefreshMobile(){
+      if(mobileRefreshIntervalID){
+        clearInterval(mobileRefreshIntervalID); // Stop the refresh
+        mobileRefreshIntervalID = null;
+      }
+    }
+    function updateMobileView(){
+      fetch('/data')
+        .then(response => response.json())
+        .then(data => {
+          let now = new Date(); // Current timestamp
+          data.forEach(c => {
+            if(!containerStats[c.cid]) containerStats[c.cid] = []; // Initialize container stats
+            containerStats[c.cid].push({ time: now, cpu: c.cpu, mem: c.mem_used_val });
+            if(containerStats[c.cid].length>600) containerStats[c.cid].shift(); // Limit stored stats
+          });
+
+          // Filter by name
+          if(mobile_filterText.trim() !== ''){
+            data = data.filter(c => c.name.toLowerCase().includes(mobile_filterText.toLowerCase()));
+          }
+          data.sort((a,b) => {
+            if(mobile_sortColumn==='name') return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+            if(mobile_sortColumn==='cpu') return (parseFloat(b.cpu)||0) - (parseFloat(a.cpu)||0);
+            if(mobile_sortColumn==='mem') return (parseFloat(b.mem_used_val)||0) - (parseFloat(a.mem_used_val)||0);
+          });
+
+          let containerHTML = data.map(c => {
+            let cpuUsage = parseFloat(c.cpu)||0;
+            let cpuBarColor = (cpuUsage>=200) ? "red" : (cpuUsage>=100?"orange":"#007500"); // Determine CPU color
+            let barValue = c.mem_bar_percent||0;
+            let barWidth = barValue.toFixed(1) + "%";
+
+            // Selection marking
+            let blockClass = (selectedCid === c.cid) ? "container-block selected" : "container-block";
+
+            // Button color based on status
+            let buttonColor = "green";
+            if(c.status === "stopped") buttonColor = "red";
+            else if(c.status === "paused") buttonColor = "orange";
+
+            return `<div class="${blockClass}">
+              <div class="mobile-row mobile-row-1">
+                <button class="btn mobile-container-name" style="background-color:${buttonColor};"
+                        onclick="selectContainer('${c.cid}', '${c.status}')">
+                  ${c.name}
+                </button>
+                <span class="mobile-container-status ${c.status.toLowerCase()}">${c.status}</span>
+              </div>
+              <div class="mobile-row mobile-row-2">
+                <span>CPU%</span>
+                <span class="mobile-right">MEM</span>
+              </div>
+              <div class="mobile-row mobile-row-3">
+                <div class="progress-container" style="width:48%;">
+                  <div class="progress-bar" style="width:${c.cpu}%; background:${cpuBarColor}"></div>
+                  <span class="progress-text">${c.cpu_display}</span>
+                </div>
+                <div class="progress-container" style="width:48%;">
+                  <div class="progress-bar" style="width:${barWidth}; background:#007bff"></div>
+                  <span class="progress-text">${c.mem}</span>
+                </div>
+              </div>
+              <div class="mobile-row mobile-row-4">
+                <span>NET RX/TX</span>
+                <span class="mobile-right">IO R/W</span>
+              </div>
+              <div class="mobile-row mobile-row-5">
+                <span>${c.net}</span>
+                <span class="mobile-right">${c.io}</span>
+              </div>
+            </div>`;
+          }).join("");
+
+          document.getElementById("mobile-containers").innerHTML = containerHTML; // Update container list
+          updateHeaderButtonStyles(); // Update button styles based on current state
+        })
+        .catch(err => console.error("Error in updateMobileView:", err)); // Log errors
+    }
+
+    function selectContainer(cid, status){
+      selectedCid = cid; // Set selected container ID
+      selectedStatus = status; // Set selected container status
+      updateMobileView(); // Refresh view
+    }
+
+    // START/RESUME action
+    function fixedStartAction(){
+      if(!selectedCid){
+        alert("Please select a container");
+        return;
+      }
+      let action = (selectedStatus === "paused") ? "resume" : "start"; // Determine action
+      fetch('/manage', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: action, cid: selectedCid }) // Send action to server
+      })
+      .then(r => r.json())
+      .then(() => {
+        selectedCid = null; // Deselect container
+        selectedStatus = null; // Clear status
+        updateMobileView(); // Refresh view
+      })
+      .catch(err => console.error("Error managing container:", err)); // Log errors
+    }
+
+    function manageContainerMobile(action, cid){
+      if(!cid){
+        alert("Please select a container");
+        return;
+      }
+      fetch('/manage', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: action, cid: cid }) // Send action to server
+      })
+      .then(r => r.json())
+      .then(() => {
+        selectedCid = null; // Deselect container
+        selectedStatus = null; // Clear status
+        updateMobileView(); // Refresh view
+      })
+      .catch(err => console.error("Error managing container:", err)); // Log errors
+    }
+
+    /* LOGS */
+    var logsRefreshIntervalID = null; // Logs refresh interval ID
+    function showLogs(cid){
+      if(!cid){
+        alert("Please select a container");
+        return;
+      }
+      // Deselect container after action
+      selectedCid = null;
+      selectedStatus = null;
+      updateMobileView(); // Refresh view
+
+      logsModalOpenCid = cid; // Set modal open container ID
+      document.getElementById("logsModal").style.display = "block"; // Show logs modal
+      fetchLogs(); // Fetch logs immediately
+      logsRefreshIntervalID = setInterval(fetchLogs, 3000); // Set interval for refreshing logs
+    }
+    function closeLogs(){
+      document.getElementById("logsModal").style.display = "none"; // Hide logs modal
+      logsModalOpenCid = null; // Clear opened logs ID
+      if(logsRefreshIntervalID){
+        clearInterval(logsRefreshIntervalID); // Clear refresh interval
+        logsRefreshIntervalID = null;
+      }
+    }
+    function fetchLogs(){
+      if(!logsModalOpenCid) return;
+      fetch('/logs?cid=' + logsModalOpenCid)
+        .then(r => r.json())
+        .then(data => {
+          let logsTitle = document.getElementById("logsTitle");
+          logsTitle.innerText = data.name || logsModalOpenCid; // Set logs title
+          let logsOutput = document.getElementById("logsOutput");
+          logsOutput.innerHTML = data.logs.replace(/\\n/g, "<br>"); // Display logs
+          logsOutput.scrollTop = logsOutput.scrollHeight; // Scroll to bottom
+        })
+        .catch(err => console.error("Error fetching logs:", err)); // Log errors
+    }
+
+    /* Filter and sorting */
+    function toggleMobileFilter(){
+      let row = document.getElementById("mobile-filter-row");
+      let nameButton = document.querySelector("#header-buttons button:nth-child(1)");
+      if(row.style.display === "none" || row.style.display === ""){
+        row.style.display = "block"; // Show filter input
+        nameButton.style.backgroundColor = "green"; // Highlight button
+        document.getElementById("mobileNameFilterInput").focus(); // Focus input field
+      } else {
+        row.style.display = "none"; // Hide filter input
+        mobile_filterText = ""; // Reset filter text
+        nameButton.style.backgroundColor = "#333"; // Reset button color
+        updateMobileView(); // Refresh view
+      }
+    }
+    function onMobileNameFilterChange(e){
+      mobile_filterText = e.target.value; // Update filter text
+      updateMobileView(); // Refresh view
+    }
+    function setSortMobile(col){
+      if(mobile_sortColumn === col) {
+        // If the same column is clicked again, revert to sorting by name
+        mobile_sortColumn = "name";
+      } else {
+        mobile_sortColumn = col; // Set new sorting column
+      }
+      updateMobileView(); // Refresh view
+      updateHeaderButtonStyles(); // Update button styles
+    }
+    function resetMobileFilters(){
+      mobile_filterText = ""; // Reset filter text
+      mobile_sortColumn = "name"; // Reset sorting
+      document.getElementById("mobile-filter-row").style.display = "none"; // Hide filter input
+      let inp = document.getElementById("mobileNameFilterInput");
+      if(inp) inp.value = ""; // Clear input field
+      updateMobileView(); // Refresh view
+      updateHeaderButtonStyles(); // Update button styles
+    }
+    function updateHeaderButtonStyles(){
+      let buttons = document.querySelectorAll("#header-buttons .btn");
+      // Assuming: first is NAME, second is CPU, third is MEM button
+      let nameBtn = buttons[0];
+      let cpuBtn = buttons[1];
+      let memBtn = buttons[2];
+
+      // NAME button: active if filter row is visible
+      let filterRow = document.getElementById("mobile-filter-row");
+      if(filterRow.style.display === "block"){
+        nameBtn.style.backgroundColor = "green";
+      } else {
+        nameBtn.style.backgroundColor = "#333";
+      }
+
+      // CPU/MEM buttons: active based on current sorting column
+      if(mobile_sortColumn === "cpu"){
+        cpuBtn.style.backgroundColor = "green";
+        memBtn.style.backgroundColor = "#333";
+      } else if(mobile_sortColumn === "mem"){
+        memBtn.style.backgroundColor = "green";
+        cpuBtn.style.backgroundColor = "#333";
+      } else {
+        cpuBtn.style.backgroundColor = "#333";
+        memBtn.style.backgroundColor = "#333";
+      }
+    }
+
+    /* AUTO LOGOUT, etc. */
+    document.addEventListener("click", () => { resetAutoLogout(); }); // Reset auto logout on any click
+    window.addEventListener("resize", () => {
+      // Additional responsive settings can be added here
+    });
+  </script>
+</body>
+</html>
