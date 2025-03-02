@@ -77,13 +77,13 @@ Docker Monitor is available on Docker Hub. Follow these steps to install and run
  
 Open a terminal and run:
 
-    $ docker pull szemod/dockermonitor
+    docker pull szemod/dockermonitor
 
 2. **Run the Docker Container:**
 
 Launch the container within terminal with the following command:
 
-    $ docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
+    docker run --name dockermonitor -p 5434:5434 szemod/dockermonitor
 
 Here is the Docker Compose file (what you can also use within Portainer stack):
 
