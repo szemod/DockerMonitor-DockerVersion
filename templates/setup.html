@@ -7,75 +7,115 @@
     <link rel="manifest" href="manifest.json">
     <style>
         body {
-            background: #1a1a1a; /* Background color */
-            color: #e6f0e6; /* Text color */
-            font-family: 'Courier New', monospace; /* Font style */
-            display: flex; /* Flexbox for centering */
-            align-items: center; /* Align items vertically */
-            justify-content: center; /* Align items horizontally */
-            height: 100vh; /* Full viewport height */
-            margin: 0; /* Remove default margin */
+            background: #1a1a1a;
+            color: #e6f0e6;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
         }
         .setup-container {
-            background: #002200; /* Container background */
-            padding: 20px; /* Inner spacing */
-            border-radius: 8px; /* Rounded corners */
-            box-shadow: 0 0 10px rgba(0,0,0,0.5); /* Shadow effect */
-            width: 350px; /* Fixed width */
+            background: #002200;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 350px;
         }
         .setup-container h2 {
-            text-align: center; /* Center heading */
+            text-align: center;
         }
         .hosts-list {
-            margin-bottom: 15px; /* Spacing below the list */
+            margin-bottom: 15px;
         }
         .hosts-list table {
-            width: 100%; /* Full width for the table */
-            border-collapse: collapse; /* Merge table borders */
+            width: 100%;
+            border-collapse: collapse;
         }
         .hosts-list th, .hosts-list td {
-            border: 1px solid #004400; /* Table cell border */
-            padding: 5px; /* Cell padding */
-            text-align: center; /* Center text in cells */
+            border: 1px solid #004400;
+            padding: 5px;
+            text-align: center;
+        }
+        .delete-button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #c21e0c;
+            font-size: 16px;
+            margin-right: 5px;
         }
         .button-group {
-            display: flex; /* Flexbox for button layout */
-            flex-direction: column; /* Vertical button layout */
-            gap: 10px; /* Space between buttons */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         .button-group button {
-            padding: 10px; /* Button padding */
-            background: #007500; /* Button background color */
-            border: none; /* No border */
-            border-radius: 4px; /* Rounded button edges */
-            color: #e6f0e6; /* Button text color */
-            cursor: pointer; /* Pointer cursor on hover */
-            font-weight: bold; /* Bold button text */
+            padding: 10px;
+            background: #007500;
+            border: none;
+            border-radius: 4px;
+            color: #e6f0e6;
+            cursor: pointer;
+            font-weight: bold;
         }
         .button-group button:disabled {
-            background: #555; /* Background for disabled buttons */
-            cursor: not-allowed; /* Not-allowed cursor */
+            background: #555;
+            cursor: not-allowed;
         }
         .input-fields {
-            display: none; /* Hide input fields initially */
-            flex-direction: column; /* Vertical input layout */
-            gap: 10px; /* Space between inputs */
-            margin-bottom: 10px; /* Spacing below input fields */
+            display: none; /* Hidden by default until needed */
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
         }
         .input-fields input[type="text"],
         .input-fields input[type="password"] {
-            padding: 10px; /* Input padding */
-            border: none; /* No border */
-            border-radius: 4px; /* Rounded input edges */
-            font-size: 14px; /* Input font size */
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
         }
         .error {
-            color: #c21e0c; /* Error message color */
-            text-align: center; /* Center error message */
+            color: #c21e0c; /* Error message styling */
+            text-align: center;
         }
         .message {
-            color: #28a745; /* Success message color */
-            text-align: center; /* Center success message */
+            color: #28a745; /* Success message styling */
+            text-align: center;
+        }
+        /* Modal styles */
+        .modal {
+            display: none; /* Initially hidden */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #002200;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #004400;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .modal-content button {
+            margin: 10px; /* Spacing between modal buttons */
+            padding: 8px 12px;
+            background: #007500;
+            border: none;
+            border-radius: 4px;
+            color: #e6f0e6;
+            cursor: pointer;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -83,25 +123,28 @@
     <div class="setup-container">
         <h2>SSH Setup</h2>
         {% if error %}
-            <p class="error">{{ error }}</p> <!-- Display error message -->
+            <p class="error">{{ error }}</p> <!-- Display error messages -->
         {% endif %}
         {% if message %}
-            <p class="message">{{ message }}</p> <!-- Display success message -->
+            <p class="message">{{ message }}</p> <!-- Display success messages -->
         {% endif %}
         <div class="hosts-list">
             <strong>Added Docker/SSH hosts:</strong>
             {% if hosts %}
             <table>
                 <tr>
-                    <th>#</th>
-                    <th>Docker Host Name</th>
-                    <th>SSH Host</th>
+                    <th>Delete</th> <!-- Button to delete a host -->
+                    <th>Docker Host Name</th> <!-- Docker host name column -->
+                    <th>SSH Host</th> <!-- SSH host column -->
                 </tr>
                 {% for host in hosts %}
                 <tr>
-                    <td>{{ loop.index }}</td> <!-- Host index -->
-                    <td>{{ host.docker_host_name }}</td> <!-- Docker host name -->
-                    <td>{{ host.ssh_host }}</td> <!-- SSH host name -->
+                    <td>
+                        <button class="delete-button" onclick="confirmDelete('{{ host.docker_host_name }}')">🗑</button>
+                        {{ loop.index }}
+                    </td>
+                    <td>{{ host.docker_host_name }}</td>
+                    <td>{{ host.ssh_host }}</td>
                 </tr>
                 {% endfor %}
             </table>
@@ -110,47 +153,58 @@
             {% endif %}
         </div>
         <div class="button-group">
-            <button id="addHostBtn" onclick="showInputFields()">Add Host</button> <!-- Button to show input fields -->
+            <button id="addHostBtn" onclick="showInputFields()">Add Host</button> <!-- Button to show input fields for adding a host -->
             <div id="inputFields" class="input-fields">
-                <input type="text" id="dockerHostName" placeholder="Docker Host Name"> <!-- Input for Docker Host Name -->
-                <input type="text" id="sshHost" placeholder="SSH Host"> <!-- Input for SSH Host -->
-                <input type="text" id="sshUser" placeholder="SSH Username"> <!-- Input for SSH Username -->
-                <input type="password" id="sshPassword" placeholder="SSH Password"> <!-- Input for SSH Password -->
+                <input type="text" id="dockerHostName" placeholder="Docker Host Name"> <!-- Input for Docker host name -->
+                <input type="text" id="sshHost" placeholder="SSH Host"> <!-- Input for SSH host -->
+                <input type="text" id="sshUser" placeholder="SSH Username"> <!-- Input for SSH username -->
+                <input type="password" id="sshPassword" placeholder="SSH Password"> <!-- Input for SSH password -->
             </div>
-            <button id="saveBtn" onclick="saveSettings()" disabled>Save SSH settings</button> <!-- Button to save settings -->
+            <button id="saveBtn" onclick="saveSettings()" disabled>Save SSH settings</button> <!-- Button to save SSH settings -->
             <button id="loginBtn" onclick="goToLogin()" disabled>Login page</button> <!-- Button to navigate to login page -->
         </div>
     </div>
+
+    <!-- Modal confirmation dialog -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <p id="confirmText"></p> <!-- Text for confirmation prompt -->
+            <button id="confirmYes">Yes</button> <!-- Confirm deletion button -->
+            <button id="confirmNo">No</button> <!-- Cancel deletion button -->
+        </div>
+    </div>
+
     <script>
         function showInputFields() {
-            document.getElementById('inputFields').style.display = 'flex'; // Display input fields
-            document.getElementById('addHostBtn').disabled = true; // Disable Add Host button
-            checkFields(); // Validate input fields
+            document.getElementById('inputFields').style.display = 'flex'; // Show input fields
+            document.getElementById('addHostBtn').disabled = true; // Disable add host button
+            checkFields(); // Check input fields
         }
 
         function checkFields() {
-            const dockerHostName = document.getElementById('dockerHostName').value.trim(); // Get Docker host name
-            const sshHost = document.getElementById('sshHost').value.trim(); // Get SSH host
-            const sshUser = document.getElementById('sshUser').value.trim(); // Get SSH username
-            const sshPassword = document.getElementById('sshPassword').value.trim(); // Get SSH password
-            const saveBtn = document.getElementById('saveBtn'); // Save button reference
+            const dockerHostName = document.getElementById('dockerHostName').value.trim();
+            const sshHost = document.getElementById('sshHost').value.trim();
+            const sshUser = document.getElementById('sshUser').value.trim();
+            const sshPassword = document.getElementById('sshPassword').value.trim();
+            const saveBtn = document.getElementById('saveBtn');
+            // Enable save button if all fields are filled
             if (dockerHostName && sshHost && sshUser && sshPassword) {
-                saveBtn.disabled = false; // Enable save button if all fields are filled
+                saveBtn.disabled = false;
             } else {
-                saveBtn.disabled = true; // Disable save button if any field is empty
+                saveBtn.disabled = true;
             }
         }
 
-        // Listen for input events on fields
+        // Input event listeners for field validation
         document.getElementById('dockerHostName').addEventListener('input', checkFields);
         document.getElementById('sshHost').addEventListener('input', checkFields);
         document.getElementById('sshUser').addEventListener('input', checkFields);
         document.getElementById('sshPassword').addEventListener('input', checkFields);
 
         function saveSettings() {
-            const saveBtn = document.getElementById('saveBtn'); // Save button reference
+            const saveBtn = document.getElementById('saveBtn');
             if (saveBtn.disabled) {
-                alert("Please fill in all the fields."); // Alert if fields are not filled
+                alert("Please fill in all the fields."); // Alert if fields are incomplete
                 return;
             }
             // Create a dynamic form for POST submission
@@ -158,10 +212,10 @@
             form.method = 'POST';
             form.action = '/setup';
 
-            const dockerHostName = document.getElementById('dockerHostName').value.trim(); // Get Docker host name
-            const sshHost = document.getElementById('sshHost').value.trim(); // Get SSH host
-            const sshUser = document.getElementById('sshUser').value.trim(); // Get SSH username
-            const sshPassword = document.getElementById('sshPassword').value.trim(); // Get SSH password
+            const dockerHostName = document.getElementById('dockerHostName').value.trim();
+            const sshHost = document.getElementById('sshHost').value.trim();
+            const sshUser = document.getElementById('sshUser').value.trim();
+            const sshPassword = document.getElementById('sshPassword').value.trim();
 
             const fields = {
                 'docker_host_name': dockerHostName,
@@ -171,29 +225,66 @@
             };
 
             for (const key in fields) {
-                const input = document.createElement('input'); // Create hidden input for each field
+                const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = key;
                 input.value = fields[key];
                 form.appendChild(input);
             }
-            document.body.appendChild(form); // Append form to body
+            document.body.appendChild(form);
             form.submit(); // Submit the form
         }
 
         function goToLogin() {
             if (document.getElementById('loginBtn').disabled) {
-                alert("Please add at least one host first."); // Alert if login button is disabled
+                alert("Please add at least one host first."); // Alert if no hosts are present
                 return;
             }
-            window.location.href = '/login'; // Navigate to login page
+            window.location.href = '/login'; // Redirect to login page
         }
 
-        // Enable Login button on page load if hosts exist
+        // Function to confirm deletion and send delete request
+        function confirmDelete(dockerHostName) {
+            const modal = document.getElementById('confirmModal');
+            const confirmText = document.getElementById('confirmText');
+            confirmText.textContent = "Are you sure you want to delete the " + dockerHostName + "?"; // Set confirmation text
+            modal.style.display = "block"; // Show modal
+
+            // Confirm deletion
+            document.getElementById('confirmYes').onclick = function() {
+                // Send POST request for deletion
+                fetch('/delete_host', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ docker_host_name: dockerHostName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Reload page on success
+                    } else {
+                        alert("Error: " + data.error); // Show error on failure
+                    }
+                })
+                .catch(error => {
+                    alert("Error: " + error); // Handle fetch error
+                });
+                modal.style.display = "none"; // Hide modal after action
+            };
+
+            // Cancel deletion
+            document.getElementById('confirmNo').onclick = function() {
+                modal.style.display = "none"; // Hide modal
+            };
+        }
+
+        // Enable login button on page load if hosts exist
         window.onload = function() {
-            const hostsExist = {{ hosts|length }} > 0; // Check for existing hosts
-            document.getElementById('loginBtn').disabled = !hostsExist; // Enable or disable login button
-            // Change button text if hosts exist
+            const hostsExist = {{ hosts|length }} > 0;
+            document.getElementById('loginBtn').disabled = !hostsExist; // Enable login button
+            // Change add host button text if hosts exist
             if (hostsExist) {
                 document.getElementById('addHostBtn').textContent = 'Add New Host';
             }
