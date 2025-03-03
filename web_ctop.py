@@ -5,7 +5,7 @@ try:
 except ImportError:
     CryptographyDeprecationWarning = DeprecationWarning
 
-# Ignore deprecation warnings related to cryptography
+# Ignore specific cryptography deprecation warnings
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 import os
@@ -15,7 +15,7 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from config import PORT
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'
+app.secret_key = 'supersecretkey'  # Secret key for session management
 
 def is_configured():
     try:
@@ -24,7 +24,7 @@ def is_configured():
         config = {}
         exec(config_content, config)
         hosts = config.get('DOCKER_HOSTS', [])
-        return bool(hosts)
+        return bool(hosts)  # Check if Docker hosts are configured
     except Exception as e:
         print(f"Error reading configuration: {e}")
         return False
@@ -42,7 +42,6 @@ def get_ssh_credentials():
         if selected_host:
             for host in hosts:
                 if host.get('docker_host_name') == selected_host:
-                    # Return SSH credentials for the selected host
                     return host.get('ssh_password'), host.get('ssh_host'), host.get('ssh_user')
             host = hosts[0]
             return host.get('ssh_password'), host.get('ssh_host'), host.get('ssh_user')
@@ -60,7 +59,7 @@ def get_ssh_connection():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)
+        ssh.connect(SSH_HOST, username=SSH_USER, password=SSH_PASSWORD)  # Establish SSH connection
     except (paramiko.ssh_exception.NoValidConnectionsError,
             paramiko.ssh_exception.AuthenticationException) as e:
         print(f"SSH connection error: {e}")
@@ -86,29 +85,27 @@ def convert_to_mb(value_str):
     except ValueError:
         return 0.0
     first_char = unit[0] if unit else ''
-    # Convert memory values to MB based on unit
     if first_char == 'K':
-        return num / 1024
+        return num / 1024  # Convert kilobytes to megabytes
     elif first_char == 'M':
-        return num
+        return num  # Already in megabytes
     elif first_char == 'G':
-        return num * 1024
+        return num * 1024  # Convert gigabytes to megabytes
     elif first_char == 'T':
-        return num * 1024 * 1024
+        return num * 1024 * 1024  # Convert terabytes to megabytes
     else:
         return num
 
 def parse_container_status(status_str):
     status_str = status_str.strip()
-    # Parse container status from string
     if "Paused" in status_str:
-        return "paused"
+        return "paused"  # Container is paused
     elif status_str.startswith("Up"):
-        return "running"
+        return "running"  # Container is running
     elif status_str.startswith("Exited"):
-        return "stopped"
+        return "stopped"  # Container has stopped
     else:
-        return status_str
+        return status_str  # Default case for unknown status
 
 def parse_docker_stats(output):
     containers = []
@@ -118,7 +115,7 @@ def parse_docker_stats(output):
             continue
         cid, name, cpu, mem, net, io, pids = parts
         try:
-            cpu_percent = float(cpu.replace('%', ''))
+            cpu_percent = float(cpu.replace('%', ''))  # Parse CPU percentage
         except ValueError:
             cpu_percent = 0.0
 
@@ -127,12 +124,12 @@ def parse_docker_stats(output):
             mem_used, mem_total = mem_parts
             mem_used = mem_used.strip()
             mem_total = mem_total.strip()
-            used_mb = convert_to_mb(mem_used)
-            total_mb = convert_to_mb(mem_total)
-            mem_percent = (used_mb / total_mb * 100) if total_mb > 0 else 0
+            used_mb = convert_to_mb(mem_used)  # Convert memory used to MB
+            total_mb = convert_to_mb(mem_total)  # Convert total memory to MB
+            mem_percent = (used_mb / total_mb * 100) if total_mb > 0 else 0  # Calculate memory percentage
             mem_used_formatted = f"{used_mb:.1f} MB"
         else:
-            used_mb = convert_to_mb(mem.strip())
+            used_mb = convert_to_mb(mem.strip())  # Convert memory to MB if not in used/total format
             mem_percent = 0
             mem_used_formatted = f"{used_mb:.1f} MB"
 
@@ -157,17 +154,17 @@ def fetch_docker_data():
     try:
         ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command(command_stats)
-        output_stats = stdout.read().decode()
+        output_stats = stdout.read().decode()  # Fetch container stats
         ssh.close()
     except Exception as e:
         print(f"Error fetching stats: {str(e)}")
         output_stats = ""
-    containers = parse_docker_stats(output_stats)
+    containers = parse_docker_stats(output_stats)  # Parse fetched stats
     command_status = """ docker ps -a --format "{{.ID}}|{{.Status}}" """
     try:
         ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command(command_status)
-        output_status = stdout.read().decode()
+        output_status = stdout.read().decode()  # Fetch container statuses
         ssh.close()
     except Exception as e:
         print(f"Error fetching status: {str(e)}")
@@ -180,30 +177,28 @@ def fetch_docker_data():
         if len(parts) == 2:
             container_id = parts[0]
             stat = parts[1]
-            # Parse and store container statuses
-            statuses[container_id[:12]] = parse_container_status(stat)
+            statuses[container_id[:12]] = parse_container_status(stat)  # Parse status of each container
     max_used = 0
     for i in range(len(containers)):
         container = containers[i]
         cid = container['cid']
         container['status'] = statuses.get(cid, 'unknown')
         if container['mem_used_val'] > max_used:
-            max_used = container['mem_used_val']
+            max_used = container['mem_used_val']  # Track maximum memory used
     for i in range(len(containers)):
         c = containers[i]
-        # Calculate memory usage percentage for display
         if max_used > 0:
-            c['mem_bar_percent'] = (c['mem_used_val'] / max_used) * 100
+            c['mem_bar_percent'] = (c['mem_used_val'] / max_used) * 100  # Calculate memory bar percentage
         else:
             c['mem_bar_percent'] = 0
     return containers
 
 @app.before_request
 def require_login():
-    # Check if user is logged in for certain routes
-    if request.endpoint not in ['setup', 'static'] and not is_configured():
+    # Ensure user is logged in unless accessing setup or delete_host
+    if request.endpoint not in ['setup', 'static', 'delete_host'] and not is_configured():
         return redirect(url_for('setup'))
-    if request.endpoint not in ['login', 'setup', 'static']:
+    if request.endpoint not in ['login', 'setup', 'static', 'delete_host']:
         if not session.get('logged_in'):
             return redirect(url_for('login'))
 
@@ -211,7 +206,7 @@ def require_login():
 def setup():
     message = None
     error = None
-    # Load current hosts from config.py for setup
+    # Load current hosts from config.py
     current_hosts = []
     try:
         with open('config.py', 'r') as f:
@@ -223,13 +218,13 @@ def setup():
         print(f"Error reading config: {e}")
 
     if request.method == 'POST':
-        # Collect values for SSH configuration
+        # Expect all fields to be filled: docker_host_name, ssh_host, ssh_user, ssh_password
         ssh_host = request.form.get('ssh_host')
         ssh_user = request.form.get('ssh_user')
         ssh_password = request.form.get('ssh_password')
         docker_host_name = request.form.get('docker_host_name')
         if not ssh_host or not ssh_user or not ssh_password or not docker_host_name:
-            error = "All fields must be filled out!"
+            error = "All fields must be filled out!"  # Validation error for empty fields
         else:
             new_host = {
                 'docker_host_name': docker_host_name,
@@ -238,7 +233,7 @@ def setup():
                 'ssh_password': ssh_password
             }
             current_hosts.append(new_host)
-            # Update the LAST_SELECTED_HOST value
+            # Update LAST_SELECTED_HOST value
             last_selected = docker_host_name
             try:
                 with open('config.py', 'w') as f:
@@ -248,16 +243,16 @@ def setup():
                 message = "SSH settings saved. You can add more hosts or proceed to login."
                 return redirect(url_for('setup'))
             except Exception as e:
-                error = "An error occurred while saving the configuration!"
+                error = "An error occurred while saving the configuration!"  # Error during saving
 
-    return render_template('setup.html', message=message, error=error, hosts=current_hosts)
+    return render_template('setup.html', message=message, error=error, hosts=current_hosts)  # Render the setup page
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
     if not is_configured():
-        return redirect(url_for('setup'))
-    # Load hosts from config for login
+        return redirect(url_for('setup'))  # Redirect to setup if not configured
+    # Load hosts from config
     current_hosts = []
     config = {}
     try:
@@ -294,35 +289,32 @@ def login():
             session['dark_mode'] = True if request.form.get('dark_mode') == 'on' else False
             session['auto_logout'] = True if request.form.get('auto_logout') == 'on' else False
             session['mobile_view'] = True if request.form.get('mobile_view') == 'on' else False
-            return redirect(url_for('index'))
+            return redirect(url_for('index'))  # Redirect to index after successful login
         else:
-            error = "Invalid username or password!"
-    return render_template('login.html', error=error, hosts=current_hosts, default_host=default_host)
+            error = "Invalid username or password!"  # Invalid login credentials
+    return render_template('login.html', error=error, hosts=current_hosts, default_host=default_host)  # Render the login page
 
 @app.route('/logout')
 def logout():
-    # Clear user session data on logout
-    session.pop('logged_in', None)
-    return redirect(url_for('login'))
+    session.pop('logged_in', None)  # Clear the logged-in session
+    return redirect(url_for('login'))  # Redirect to login page
 
 @app.route('/')
 def index():
-    # Render different templates based on mobile view preference
     if session.get('mobile_view', False):
         return render_template('mobile.html',
                                dark_mode=session.get('dark_mode', True),
                                auto_logout=session.get('auto_logout', True),
-                               mobile_view=True)
+                               mobile_view=True)  # Render mobile view
     else:
         return render_template('index.html',
                                dark_mode=session.get('dark_mode', True),
                                auto_logout=session.get('auto_logout', True),
-                               mobile_view=False)
+                               mobile_view=False)  # Render desktop view
 
 @app.route('/data')
 def data():
-    # Fetch and return docker container data as JSON
-    containers = fetch_docker_data()
+    containers = fetch_docker_data()  # Fetch and return docker data
     return jsonify(containers)
 
 @app.route('/manage', methods=['POST'])
@@ -330,25 +322,25 @@ def manage():
     action = request.json.get('action')
     container_id = request.json.get('cid')
     if action.lower() == 'resume':
-        action = 'unpause'
+        action = 'unpause'  # Convert 'resume' action to 'unpause'
     command = f'docker {action} {container_id}'
     try:
         ssh = get_ssh_connection()
-        ssh.exec_command(command)
+        ssh.exec_command(command)  # Execute docker command to manage container
         ssh.close()
     except Exception as e:
         print(f"Error managing container {action}: {str(e)}")
-    return jsonify(success=True)
+    return jsonify(success=True)  # Return success response
 
 @app.route('/logs')
 def logs():
     cid_trunc = request.args.get('cid')
     if not cid_trunc:
-        return jsonify(success=False, error="No container id provided")
+        return jsonify(success=False, error="No container id provided")  # Error for missing container ID
     try:
         ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command("docker ps -a -q --no-trunc")
-        full_ids = stdout.read().decode().strip().splitlines()
+        full_ids = stdout.read().decode().strip().splitlines()  # Get full container IDs
         ssh.close()
         full_id = None
         for id in full_ids:
@@ -357,14 +349,45 @@ def logs():
                 break
         if full_id is None:
             full_id = cid_trunc
-        command = f'docker logs --tail 100 {full_id} 2>&1'
+        command = f'docker logs --tail 100 {full_id} 2>&1'  # Command to fetch container logs
         ssh = get_ssh_connection()
         stdin, stdout, stderr = ssh.exec_command(command)
-        logs_output = stdout.read().decode() + stderr.read().decode()
+        logs_output = stdout.read().decode() + stderr.read().decode()  # Get logs output
         ssh.close()
     except Exception as e:
-        logs_output = f'Error fetching logs: {str(e)}'
-    return jsonify(logs=logs_output)
+        logs_output = f'Error fetching logs: {str(e)}'  # Error during fetching logs
+    return jsonify(logs=logs_output)  # Return logs response
+
+@app.route('/delete_host', methods=['POST'])
+def delete_host():
+    data = request.get_json()
+    host_name = data.get('docker_host_name')
+    if not host_name:
+        return jsonify(success=False, error="No host name provided"), 400  # Error for missing host name
+    current_hosts = []
+    try:
+        with open('config.py', 'r') as f:
+            config_content = f.read()
+        config = {}
+        exec(config_content, config)
+        current_hosts = config.get('DOCKER_HOSTS', [])
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 500  # Error reading config
+
+    new_hosts = [host for host in current_hosts if host.get('docker_host_name') != host_name]
+    last_selected = config.get('LAST_SELECTED_HOST')
+    if last_selected == host_name:
+        last_selected = new_hosts[0]['docker_host_name'] if new_hosts else None  # Update last selected host
+
+    try:
+        with open('config.py', 'w') as f:
+            f.write("DOCKER_HOSTS = " + repr(new_hosts) + "\n")
+            f.write("LAST_SELECTED_HOST = " + repr(last_selected) + "\n")
+            f.write("PORT = 5434\n")
+    except Exception as e:
+        return jsonify(success=False, error="An error occurred while saving the configuration!"), 500  # Error during saving
+
+    return jsonify(success=True)  # Return success response
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=PORT)  # Run the Flask application
