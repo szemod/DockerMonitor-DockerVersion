@@ -7,7 +7,7 @@ You can access the monitoring dashboard locally or remotely (locally via `http:/
 
 Use the SSH credentials you provide during setup to log in, which should match the SSH host login details.
 
-![image](https://github.com/user-attachments/assets/07defbe4-7a57-4d5b-a3f7-6e916a9e404d) ![image](https://github.com/user-attachments/assets/13823764-17f4-4202-9e9a-b9921b85ba3f)
+![image](https://github.com/user-attachments/assets/7eaa0519-bdac-493c-a52e-f742d0ca1de7) ![image](https://github.com/user-attachments/assets/85377c1e-b3b3-4d18-a43d-cfc61aaf7865)
 
 ![image](https://github.com/user-attachments/assets/85a1c198-86ea-455a-a589-45196c799a2a)
 
